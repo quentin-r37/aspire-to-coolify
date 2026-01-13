@@ -1,0 +1,40 @@
+{
+  "name": "aspire2coolify",
+  "version": "1.0.0",
+  "description": "CLI tool to convert .NET Aspire configurations to Coolify CLI commands",
+  "type": "module",
+  "main": "dist/cli/index.js",
+  "bin": {
+    "aspire2coolify": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "tsc --noEmit",
+    "start": "node dist/cli/index.js"
+  },
+  "keywords": [
+    "aspire",
+    "coolify",
+    "dotnet",
+    "cli",
+    "devops",
+    "deployment"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "cosmiconfig": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

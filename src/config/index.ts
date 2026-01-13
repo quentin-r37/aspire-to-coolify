@@ -1,0 +1,101 @@
+/**
+ * Configuration loader using cosmiconfig
+ */
+
+import { cosmiconfig } from 'cosmiconfig';
+
+export interface Aspire2CoolifyConfig {
+  coolify?: {
+    projectId?: string;
+    serverId?: string;
+    environmentId?: string;
+    apiUrl?: string;
+  };
+  mappings?: {
+    databases?: Record<string, string>;
+    services?: Record<string, string>;
+    buildPacks?: Record<string, string>;
+  };
+  defaults?: {
+    buildPack?: string;
+    region?: string;
+  };
+  output?: {
+    includeComments?: boolean;
+    format?: 'shell' | 'json' | 'yaml';
+  };
+}
+
+const explorer = cosmiconfig('aspire2coolify', {
+  searchPlaces: [
+    'aspire2coolify.config.js',
+    'aspire2coolify.config.mjs',
+    'aspire2coolify.config.cjs',
+    'aspire2coolify.config.json',
+    '.aspire2coolifyrc',
+    '.aspire2coolifyrc.json',
+    'package.json',
+  ],
+});
+
+export async function loadConfig(searchFrom?: string): Promise<Aspire2CoolifyConfig> {
+  try {
+    const result = await explorer.search(searchFrom);
+    return result?.config || {};
+  } catch {
+    return {};
+  }
+}
+
+export async function loadConfigFile(filePath: string): Promise<Aspire2CoolifyConfig> {
+  try {
+    const result = await explorer.load(filePath);
+    return result?.config || {};
+  } catch {
+    return {};
+  }
+}
+
+export function getDefaultConfig(): Aspire2CoolifyConfig {
+  return {
+    coolify: {},
+    mappings: {},
+    defaults: {
+      buildPack: 'nixpacks',
+    },
+    output: {
+      includeComments: true,
+      format: 'shell',
+    },
+  };
+}
+
+export function createConfigTemplate(): string {
+  return `// aspire2coolify.config.js
+export default {
+  coolify: {
+    // projectId: 'your-project-id',
+    // serverId: 'your-server-id',
+    // environmentId: 'your-environment-id',
+    // apiUrl: 'https://your-coolify-instance.com',
+  },
+  mappings: {
+    // Custom database type mappings
+    databases: {
+      // 'sqlserver': 'postgres', // Map SQL Server to PostgreSQL
+    },
+    // Custom service type mappings
+    services: {
+      // 'maildev': 'mailpit',
+    },
+  },
+  defaults: {
+    buildPack: 'nixpacks',
+  },
+  output: {
+    includeComments: true,
+    format: 'shell', // 'shell' | 'json'
+  },
+};
+`;
+}

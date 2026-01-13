@@ -1,0 +1,1 @@
+{"version":3,"file":"service.d.ts","sourceRoot":"","sources":["../../../src/generators/coolify/service.ts"],"names":[],"mappings":"AAAA;;GAEG;AAEH,OAAO,KAAK,EAAE,OAAO,EAAE,cAAc,EAAE,MAAM,wBAAwB,CAAC;AACtE,OAAO,KAAK,EAAE,qBAAqB,EAAsB,MAAM,yBAAyB,CAAC;AAazF,wBAAgB,sBAAsB,CAAC,OAAO,EAAE,OAAO,GAAG,qBAAqB,CAmC9E;AAED,wBAAgB,sBAAsB,CAAC,OAAO,EAAE,cAAc,GAAG,qBAAqB,CAiCrF"}
