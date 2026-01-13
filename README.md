@@ -1,6 +1,9 @@
 # aspire2coolify
 
 [![CI](https://github.com/quentin-r37/aspire-to-coolify/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/quentin-r37/aspire-to-coolify/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/aspire2coolify.svg)](https://www.npmjs.com/package/aspire2coolify)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![semantic-release](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
 
 CLI tool to convert .NET Aspire configurations to Coolify CLI commands.
 
@@ -201,7 +204,3 @@ npm test
 # Watch mode
 npm run dev
 ```
-
-## License
-
-MIT
