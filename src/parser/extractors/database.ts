@@ -90,7 +90,7 @@ export function extractChildDatabases(chains: FluentChain[]): Database[] {
 
       databases.push({
         name: chain.name,
-        type: parentChain ? (DATABASE_METHODS[parentChain.rootMethod] || 'postgres') : 'postgres',
+        type: parentChain ? DATABASE_METHODS[parentChain.rootMethod] || 'postgres' : 'postgres',
         variableName: chain.variableName,
         serverName: parentChain?.name,
         serverVariableName: chain.baseObject,
@@ -133,13 +133,11 @@ function extractNestedMethods(argsStr: string): Array<{ method: string; args: st
   return methods;
 }
 
-function processNestedMethod(
-  database: Database,
-  nested: { method: string; args: string[] }
-): void {
+function processNestedMethod(database: Database, nested: { method: string; args: string[] }): void {
   switch (nested.method) {
     case 'WithImage':
-      database.image = extractFirstStringArg(nested.args[0]) || nested.args[0]?.replace(/["']/g, '');
+      database.image =
+        extractFirstStringArg(nested.args[0]) || nested.args[0]?.replace(/["']/g, '');
       break;
     case 'WithImageTag':
       database.imageTag =

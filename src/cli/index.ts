@@ -6,7 +6,7 @@
  */
 
 import { Command } from 'commander';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { execSync } from 'node:child_process';
 import { parseFile } from '../parser/index.js';

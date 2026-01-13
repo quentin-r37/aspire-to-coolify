@@ -19,10 +19,7 @@ const ASPIRE_TO_COOLIFY_SERVICE: Record<string, CoolifyServiceType> = {
 export function generateServiceCommand(service: Service): CoolifyServiceCommand {
   const coolifyType = ASPIRE_TO_COOLIFY_SERVICE[service.type] || 'custom';
 
-  const args: string[] = [
-    `--name "${service.name}"`,
-    `--type ${coolifyType}`,
-  ];
+  const args: string[] = [`--name "${service.name}"`, `--type ${coolifyType}`];
 
   // Add custom image if specified (especially for custom services)
   if (service.image) {
@@ -46,7 +43,11 @@ export function generateServiceCommand(service: Service): CoolifyServiceCommand 
     command: 'service:create',
     type: coolifyType,
     name: service.name,
-    image: service.image ? (service.imageTag ? `${service.image}:${service.imageTag}` : service.image) : undefined,
+    image: service.image
+      ? service.imageTag
+        ? `${service.image}:${service.imageTag}`
+        : service.image
+      : undefined,
     envVars,
     args,
     comment: `Service: ${service.name} (${service.type})`,
@@ -54,10 +55,7 @@ export function generateServiceCommand(service: Service): CoolifyServiceCommand 
 }
 
 export function generateStorageCommand(storage: StorageService): CoolifyServiceCommand {
-  const args: string[] = [
-    `--name "${storage.name}"`,
-    `--type minio`,
-  ];
+  const args: string[] = [`--name "${storage.name}"`, `--type minio`];
 
   // Add custom image if specified
   if (storage.image) {
@@ -81,7 +79,11 @@ export function generateStorageCommand(storage: StorageService): CoolifyServiceC
     command: 'service:create',
     type: 'minio',
     name: storage.name,
-    image: storage.image ? (storage.imageTag ? `${storage.image}:${storage.imageTag}` : storage.image) : undefined,
+    image: storage.image
+      ? storage.imageTag
+        ? `${storage.image}:${storage.imageTag}`
+        : storage.image
+      : undefined,
     envVars,
     args,
     comment: `Storage: ${storage.name} (${storage.type})`,

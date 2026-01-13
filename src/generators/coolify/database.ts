@@ -16,10 +16,7 @@ const ASPIRE_TO_COOLIFY_DB: Record<string, CoolifyDatabaseType> = {
 export function generateDatabaseCommand(db: Database): CoolifyDatabaseCommand {
   const coolifyType = ASPIRE_TO_COOLIFY_DB[db.type] || 'postgres';
 
-  const args: string[] = [
-    `--name "${db.name}"`,
-    `--type ${coolifyType}`,
-  ];
+  const args: string[] = [`--name "${db.name}"`, `--type ${coolifyType}`];
 
   // Add custom image if specified
   if (db.image) {

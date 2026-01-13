@@ -2,7 +2,7 @@
  * Application command generator for Coolify
  */
 
-import type { Application, AspireApp, Reference } from '../../models/aspire.js';
+import type { Application, AspireApp } from '../../models/aspire.js';
 import type { CoolifyApplicationCommand, CoolifyBuildPack } from '../../models/coolify.js';
 
 const ASPIRE_TO_COOLIFY_BUILDPACK: Record<string, CoolifyBuildPack> = {
@@ -18,10 +18,7 @@ export function generateApplicationCommand(
 ): CoolifyApplicationCommand {
   const buildPack = ASPIRE_TO_COOLIFY_BUILDPACK[app.buildPack] || 'nixpacks';
 
-  const args: string[] = [
-    `--name "${app.name}"`,
-    `--build-pack ${buildPack}`,
-  ];
+  const args: string[] = [`--name "${app.name}"`, `--build-pack ${buildPack}`];
 
   // Add source path if available
   if (app.sourcePath) {

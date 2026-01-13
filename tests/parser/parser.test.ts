@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseSource, parseFile } from '../../src/parser/index.js';
 import {
   extractFluentChains,
@@ -8,6 +8,8 @@ import {
   parseArgs,
   extractFirstStringArg,
 } from '../../src/parser/tokenizer.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe('Tokenizer', () => {
   describe('parseArgs', () => {
@@ -69,8 +71,7 @@ describe('Tokenizer', () => {
     });
 
     it('should extract chain with methods', () => {
-      const source =
-        'var db = builder.AddPostgres("mydb").WithDataVolume().WithHostPort(5432);';
+      const source = 'var db = builder.AddPostgres("mydb").WithDataVolume().WithHostPort(5432);';
       const chains = extractFluentChains(source);
 
       expect(chains).toHaveLength(1);

@@ -2,7 +2,13 @@
  * Application extractor - parses application-related Aspire methods
  */
 
-import type { Application, ApplicationType, BuildPack, EnvironmentVariable, Endpoint } from '../../models/aspire.js';
+import type {
+  Application,
+  ApplicationType,
+  BuildPack,
+  EnvironmentVariable,
+  Endpoint,
+} from '../../models/aspire.js';
 import type { FluentChain } from '../tokenizer.js';
 import { extractFirstStringArg, extractNamedArgs } from '../tokenizer.js';
 
@@ -20,7 +26,10 @@ export function isApplicationChain(chain: FluentChain): boolean {
 }
 
 export function extractApplication(chain: FluentChain): Application {
-  const config = APPLICATION_METHODS[chain.rootMethod] || { type: 'project', buildPack: 'dockerfile' };
+  const config = APPLICATION_METHODS[chain.rootMethod] || {
+    type: 'project',
+    buildPack: 'dockerfile',
+  };
 
   const app: Application = {
     name: chain.name,
@@ -34,8 +43,9 @@ export function extractApplication(chain: FluentChain): Application {
 
   // Extract source path from second argument (for AddNpmApp, AddProject)
   if (chain.rootArgs.length > 1) {
-    const sourcePath = extractFirstStringArg(chain.rootArgs[1]) || chain.rootArgs[1]?.replace(/["']/g, '');
-    if (sourcePath && sourcePath.startsWith('.') || sourcePath?.startsWith('/')) {
+    const sourcePath =
+      extractFirstStringArg(chain.rootArgs[1]) || chain.rootArgs[1]?.replace(/["']/g, '');
+    if ((sourcePath && sourcePath.startsWith('.')) || sourcePath?.startsWith('/')) {
       app.sourcePath = sourcePath;
     }
   }
@@ -111,7 +121,7 @@ export function extractApplication(chain: FluentChain): Application {
   return app;
 }
 
-function extractEnvironment(args: string[], rawArgs: string): EnvironmentVariable | null {
+function extractEnvironment(args: string[], _rawArgs: string): EnvironmentVariable | null {
   if (args.length < 2) {
     // Single arg might be a callback - skip for now
     return null;
@@ -130,7 +140,7 @@ function extractEnvironment(args: string[], rawArgs: string): EnvironmentVariabl
   return { key, value: value.trim(), isExpression: true };
 }
 
-function extractHttpEndpoint(args: string[], rawArgs: string): Endpoint {
+function extractHttpEndpoint(args: string[], _rawArgs: string): Endpoint {
   const namedArgs = extractNamedArgs(args);
 
   const endpoint: Endpoint = {

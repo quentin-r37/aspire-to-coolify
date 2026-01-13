@@ -43,7 +43,7 @@ export function parseFile(filePath: string, options: ParseOptions = {}): ParseRe
 /**
  * Parse Aspire Program.cs source code and extract the application model
  */
-export function parseSource(source: string, options: ParseOptions = {}): ParseResult {
+export function parseSource(source: string, _options: ParseOptions = {}): ParseResult {
   const app = createEmptyAspireApp();
   const errors: ParseError[] = [];
   const warnings: string[] = [];
@@ -137,22 +137,16 @@ export function parseSource(source: string, options: ParseOptions = {}): ParseRe
 /**
  * Build reference connections between resources
  */
-function buildReferences(app: AspireApp, chainMap: Map<string, FluentChain>): Reference[] {
+function buildReferences(app: AspireApp, _chainMap: Map<string, FluentChain>): Reference[] {
   const references: Reference[] = [];
 
   // Process application references
   for (const application of app.applications) {
     for (const ref of application.references) {
       // Find what the reference points to
-      const targetDb = app.databases.find(
-        (d) => d.variableName === ref || d.name === ref
-      );
-      const targetService = app.services.find(
-        (s) => s.variableName === ref || s.name === ref
-      );
-      const targetStorage = app.storage.find(
-        (s) => s.variableName === ref || s.name === ref
-      );
+      const targetDb = app.databases.find((d) => d.variableName === ref || d.name === ref);
+      const targetService = app.services.find((s) => s.variableName === ref || s.name === ref);
+      const targetStorage = app.storage.find((s) => s.variableName === ref || s.name === ref);
 
       if (targetDb) {
         references.push({
@@ -177,9 +171,7 @@ function buildReferences(app: AspireApp, chainMap: Map<string, FluentChain>): Re
   // Process service references
   for (const service of app.services) {
     for (const ref of service.references) {
-      const targetDb = app.databases.find(
-        (d) => d.variableName === ref || d.name === ref
-      );
+      const targetDb = app.databases.find((d) => d.variableName === ref || d.name === ref);
       if (targetDb) {
         references.push({
           from: service.name,
@@ -228,7 +220,6 @@ function validateApp(app: AspireApp, warnings: string[]): void {
   }
 
   // Check for unresolved references
-  const allResourceNames = new Set(allNames);
   for (const application of app.applications) {
     for (const ref of application.references) {
       const found =

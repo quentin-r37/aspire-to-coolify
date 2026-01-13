@@ -2,7 +2,7 @@
  * Container/Service extractor - parses container-related Aspire methods
  */
 
-import type { Service, ServiceType, EnvironmentVariable, Volume, Endpoint } from '../../models/aspire.js';
+import type { Service, ServiceType, EnvironmentVariable, Endpoint } from '../../models/aspire.js';
 import type { FluentChain } from '../tokenizer.js';
 import { extractFirstStringArg, extractNamedArgs } from '../tokenizer.js';
 
@@ -43,7 +43,8 @@ export function extractContainer(chain: FluentChain): Service {
 
   // For AddContainer, extract image from second argument
   if (chain.rootMethod === 'AddContainer' && chain.rootArgs.length > 1) {
-    service.image = extractFirstStringArg(chain.rootArgs[1]) || chain.rootArgs[1]?.replace(/["']/g, '');
+    service.image =
+      extractFirstStringArg(chain.rootArgs[1]) || chain.rootArgs[1]?.replace(/["']/g, '');
   }
 
   // Process chained methods
@@ -83,7 +84,8 @@ export function extractContainer(chain: FluentChain): Service {
           service.volumes.push({
             isData: false,
             name: extractFirstStringArg(method.args[0]) || method.args[0]?.replace(/["']/g, ''),
-            mountPath: extractFirstStringArg(method.args[1]) || method.args[1]?.replace(/["']/g, ''),
+            mountPath:
+              extractFirstStringArg(method.args[1]) || method.args[1]?.replace(/["']/g, ''),
           });
         }
         break;
@@ -107,7 +109,8 @@ export function extractContainer(chain: FluentChain): Service {
         break;
 
       case 'WithReference':
-        const refName = extractFirstStringArg(method.rawArgs) || method.args[0]?.replace(/["']/g, '');
+        const refName =
+          extractFirstStringArg(method.rawArgs) || method.args[0]?.replace(/["']/g, '');
         if (refName) {
           service.references.push(refName);
         }
@@ -130,7 +133,7 @@ function extractEnvironment(args: string[]): EnvironmentVariable | null {
   return { key, value, isExpression };
 }
 
-function extractHttpEndpoint(args: string[], rawArgs: string): Endpoint {
+function extractHttpEndpoint(args: string[], _rawArgs: string): Endpoint {
   const namedArgs = extractNamedArgs(args);
 
   const endpoint: Endpoint = {
