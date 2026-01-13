@@ -36,11 +36,11 @@ jobs:
   publish:
     needs: build-and-test
     runs-on: ubuntu-latest
-    # Only publish on push to main (not PRs) and skip if [skip publish] in commit message
+    # Only publish on push to main, manual trigger, or skip if [skip publish] in commit message
     if: >
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       github.ref == 'refs/heads/main' &&
-      !contains(github.event.head_commit.message, '[skip publish]')
+      !contains(github.event.head_commit.message || '', '[skip publish]')
 
     permissions:
       contents: write
