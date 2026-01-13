@@ -1,6 +1,6 @@
 # aspire2coolify
 
-[![CI](https://github.com/quentin-r37/aspire-to-coolify/actions/workflows/ci.yml/badge.svg)](https://github.com/quentin-r37/aspire-to-coolify/actions/workflows/ci.yml)
+[![CI](https://github.com/quentin-r37/aspire-to-coolify/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/quentin-r37/aspire-to-coolify/actions/workflows/ci.yml)
 
 CLI tool to convert .NET Aspire configurations to Coolify CLI commands.
 
