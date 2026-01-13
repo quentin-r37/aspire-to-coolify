@@ -125,6 +125,23 @@ describe('Parser', () => {
       expect(result.app.databases[0].type).toBe('postgres');
     });
 
+    it('should extract lambda with long parameter names (container =>)', () => {
+      const source = `
+        var postgres = builder.AddPostgres("db")
+            .RunAsContainer(container => container
+                .WithImage("postgres")
+                .WithImageTag("16-alpine")
+            );
+      `;
+
+      const result = parseSource(source);
+
+      expect(result.app.databases).toHaveLength(1);
+      expect(result.app.databases[0].name).toBe('db');
+      expect(result.app.databases[0].image).toBe('postgres');
+      expect(result.app.databases[0].imageTag).toBe('16-alpine');
+    });
+
     it('should extract application with environment variables', () => {
       const source = `
         builder.AddNpmApp("svelte", "../SvelteKit")

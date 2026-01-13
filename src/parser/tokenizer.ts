@@ -205,9 +205,9 @@ export function normalizeSource(source: string): string {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       // Collapse multiple whitespace/newlines into single space
       .replace(/\s+/g, ' ')
-      // Normalize around operators
+      // Normalize around operators (=> must be handled before = to avoid breaking lambda arrows)
       .replace(/\s*=>\s*/g, ' => ')
-      .replace(/\s*=\s*/g, ' = ')
+      .replace(/\s*=(?!>)\s*/g, ' = ')
       .trim()
   );
 }
