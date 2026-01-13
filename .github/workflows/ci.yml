@@ -36,6 +36,7 @@ jobs:
   publish:
     needs: build-and-test
     runs-on: ubuntu-latest
+    environment: npm
     # Only publish on push to main, manual trigger, or skip if [skip publish] in commit message
     if: >
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
