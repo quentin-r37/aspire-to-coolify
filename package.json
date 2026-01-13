@@ -21,7 +21,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix",
