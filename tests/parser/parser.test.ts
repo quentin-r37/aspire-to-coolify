@@ -192,4 +192,87 @@ describe('Parser', () => {
       expect(result.app.applications.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  describe('JavaScript apps', () => {
+    it('should parse AddJavaScriptApp as application', () => {
+      const source = `
+        builder.AddJavaScriptApp("angular", "../AspireJavaScript.Angular", runScriptName: "start")
+            .WithHttpEndpoint(env: "PORT")
+            .PublishAsDockerFile();
+      `;
+
+      const result = parseSource(source);
+
+      expect(result.errors).toHaveLength(0);
+      expect(result.app.applications).toHaveLength(1);
+      expect(result.app.applications[0].name).toBe('angular');
+      expect(result.app.applications[0].type).toBe('npm');
+      expect(result.app.applications[0].sourcePath).toBe('../AspireJavaScript.Angular');
+      expect(result.app.applications[0].runScript).toBe('start');
+    });
+
+    it('should extract WaitFor dependencies', () => {
+      const source = `
+        var api = builder.AddProject<Projects.Api>("api");
+        builder.AddJavaScriptApp("webapp", "../app")
+            .WithReference(api)
+            .WaitFor(api);
+      `;
+
+      const result = parseSource(source);
+
+      const webapp = result.app.applications.find((a) => a.name === 'webapp');
+      expect(webapp).toBeDefined();
+      expect(webapp?.waitFor).toContain('api');
+    });
+
+    it('should extract WithRunScript', () => {
+      const source = `
+        builder.AddJavaScriptApp("vue", "../Vue")
+            .WithRunScript("start");
+      `;
+
+      const result = parseSource(source);
+
+      expect(result.app.applications[0].runScript).toBe('start');
+    });
+
+    it('should extract WithNpm options', () => {
+      const source = `
+        builder.AddJavaScriptApp("vue", "../Vue")
+            .WithNpm(installCommand: "ci");
+      `;
+
+      const result = parseSource(source);
+
+      expect(result.app.applications[0].npmInstallCommand).toBe('ci');
+    });
+
+    it('should parse javascript-apps.cs fixture', () => {
+      const fixturePath = resolve(__dirname, '../fixtures/javascript-apps.cs');
+      const result = parseFile(fixturePath);
+
+      expect(result.errors).toHaveLength(0);
+      expect(result.app.applications).toHaveLength(4); // weatherapi + angular + react + vue
+
+      // Angular app
+      const angular = result.app.applications.find((a) => a.name === 'angular');
+      expect(angular).toBeDefined();
+      expect(angular?.type).toBe('npm');
+      expect(angular?.sourcePath).toBe('../AspireJavaScript.Angular');
+      expect(angular?.runScript).toBe('start');
+      expect(angular?.waitFor).toContain('weatherApi'); // variable name, not resource name
+
+      // React app with environment variable
+      const react = result.app.applications.find((a) => a.name === 'react');
+      expect(react).toBeDefined();
+      expect(react?.environment.find((e) => e.key === 'BROWSER')?.value).toBe('none');
+
+      // Vue app with WithRunScript and WithNpm
+      const vue = result.app.applications.find((a) => a.name === 'vue');
+      expect(vue).toBeDefined();
+      expect(vue?.runScript).toBe('start');
+      expect(vue?.npmInstallCommand).toBe('ci');
+    });
+  });
 });

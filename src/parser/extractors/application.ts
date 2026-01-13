@@ -15,6 +15,7 @@ import { extractFirstStringArg, extractNamedArgs } from '../tokenizer.js';
 const APPLICATION_METHODS: Record<string, { type: ApplicationType; buildPack: BuildPack }> = {
   AddNpmApp: { type: 'npm', buildPack: 'nixpacks' },
   AddNodeApp: { type: 'npm', buildPack: 'nixpacks' },
+  AddJavaScriptApp: { type: 'npm', buildPack: 'nixpacks' },
   AddProject: { type: 'project', buildPack: 'dockerfile' },
   AddDockerfile: { type: 'dockerfile', buildPack: 'dockerfile' },
   AddContainer: { type: 'container', buildPack: 'dockerfile' },
@@ -41,13 +42,19 @@ export function extractApplication(chain: FluentChain): Application {
     references: [],
   };
 
-  // Extract source path from second argument (for AddNpmApp, AddProject)
+  // Extract source path from second argument (for AddNpmApp, AddProject, AddJavaScriptApp)
   if (chain.rootArgs.length > 1) {
     const sourcePath =
       extractFirstStringArg(chain.rootArgs[1]) || chain.rootArgs[1]?.replace(/["']/g, '');
     if ((sourcePath && sourcePath.startsWith('.')) || sourcePath?.startsWith('/')) {
       app.sourcePath = sourcePath;
     }
+  }
+
+  // Extract named arguments from root method (e.g., runScriptName: "start")
+  const rootNamedArgs = extractNamedArgs(chain.rootArgs);
+  if (rootNamedArgs.runScriptName) {
+    app.runScript = rootNamedArgs.runScriptName;
   }
 
   // For AddProject, look for project reference in args
@@ -113,6 +120,28 @@ export function extractApplication(chain: FluentChain): Application {
             protocol: 'http',
             isExternal: false,
           });
+        }
+        break;
+
+      case 'WaitFor':
+        const waitTarget = extractReferenceTarget(method.args[0]);
+        if (waitTarget) {
+          app.waitFor = app.waitFor || [];
+          app.waitFor.push(waitTarget);
+        }
+        break;
+
+      case 'WithRunScript':
+        const scriptName = extractFirstStringArg(method.args[0]) || method.args[0]?.replace(/["']/g, '');
+        if (scriptName) {
+          app.runScript = scriptName;
+        }
+        break;
+
+      case 'WithNpm':
+        const npmArgs = extractNamedArgs(method.args);
+        if (npmArgs.installCommand) {
+          app.npmInstallCommand = npmArgs.installCommand;
         }
         break;
     }

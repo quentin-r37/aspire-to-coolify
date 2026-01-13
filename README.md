@@ -167,7 +167,7 @@ export default {
 - `AddMinioContainer`
 
 ### Applications
-- `AddNpmApp`, `AddNodeApp`
+- `AddNpmApp`, `AddNodeApp`, `AddJavaScriptApp`
 - `AddProject<T>`
 - `AddDockerfile`
 - `AddContainer`
@@ -175,11 +175,14 @@ export default {
 ### Configuration Methods
 - `WithEnvironment(key, value)`
 - `WithReference(resource)`
+- `WaitFor(resource)`
 - `WithHttpEndpoint()`, `WithHttpsEndpoint()`
 - `WithExternalHttpEndpoints()`
 - `WithHostPort(port)`
 - `WithImage(image)`, `WithImageTag(tag)`
 - `WithDataVolume()`
+- `WithRunScript(scriptName)`
+- `WithNpm(installCommand: "ci")`
 - `PublishAsDockerFile()`
 - `RunAsContainer()`
 

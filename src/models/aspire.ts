@@ -77,6 +77,9 @@ export interface Application {
   endpoints: Endpoint[];
   references: string[];
   publishMode?: 'dockerfile' | 'container';
+  runScript?: string;
+  npmInstallCommand?: string;
+  waitFor?: string[];
 }
 
 export type ApplicationType = 'npm' | 'project' | 'container' | 'dockerfile' | 'executable';
