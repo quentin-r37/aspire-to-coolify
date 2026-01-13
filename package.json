@@ -7,6 +7,17 @@
   "bin": {
     "aspire2coolify": "dist/cli/index.js"
   },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quentin-r37/aspire-to-coolify.git"
+  },
+  "homepage": "https://github.com/quentin-r37/aspire-to-coolify#readme",
+  "bugs": {
+    "url": "https://github.com/quentin-r37/aspire-to-coolify/issues"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
