@@ -1,1 +1,0 @@
-{"version":3,"file":"application.d.ts","sourceRoot":"","sources":["../../../src/parser/extractors/application.ts"],"names":[],"mappings":"AAAA;;GAEG;AAEH,OAAO,KAAK,EAAE,WAAW,EAA6D,MAAM,wBAAwB,CAAC;AACrH,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,iBAAiB,CAAC;AAYnD,wBAAgB,kBAAkB,CAAC,KAAK,EAAE,WAAW,GAAG,OAAO,CAE9D;AAED,wBAAgB,kBAAkB,CAAC,KAAK,EAAE,WAAW,GAAG,WAAW,CA0FlE"}
