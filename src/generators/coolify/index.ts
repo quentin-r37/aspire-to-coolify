@@ -12,6 +12,7 @@ import { generateApplicationCommand } from './application.js';
 export interface GenerateOptions {
   includeComments?: boolean;
   projectId?: string;
+  projectName?: string;
   serverId?: string;
   environmentId?: string;
   environmentName?: string;
@@ -31,10 +32,29 @@ export function generate(app: AspireApp, options: GenerateOptions = {}): Generat
   const commands: CoolifyCommand[] = [];
   const errors: string[] = [];
 
+  // Determine if we need to create a project
+  const needsProjectCreation = !options.projectId;
+  const projectUuidValue = needsProjectCreation ? '$PROJECT_UUID' : options.projectId;
+
+  // Add project creation command if needed
+  if (needsProjectCreation && options.projectName) {
+    const projectCommand: CoolifyCommand = {
+      endpoint: '/projects',
+      method: 'POST',
+      name: options.projectName,
+      comment: `Project: ${options.projectName}`,
+      payload: {
+        name: options.projectName,
+        description: 'Deployed from aspire2coolify',
+      },
+    };
+    commands.push(projectCommand);
+  }
+
   // Common options for all generators
   const generatorOptions = {
     serverUuid: options.serverId,
-    projectUuid: options.projectId,
+    projectUuid: projectUuidValue,
     environmentName: options.environmentName || options.environmentId,
     instantDeploy: options.instantDeploy,
   };

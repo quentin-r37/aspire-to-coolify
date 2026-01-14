@@ -26,6 +26,15 @@ export interface CreateServiceResponse {
   domains: string[];
 }
 
+export interface CreateProjectPayload {
+  name: string;
+  description?: string;
+}
+
+export interface CreateProjectResponse {
+  uuid: string;
+}
+
 // Database payload types
 export interface PostgresDatabasePayload {
   server_uuid: string;
@@ -267,6 +276,47 @@ export class CoolifyApiClient {
    * Test connection to the Coolify API
    */
   async testConnection(): Promise<CoolifyApiResponse<{ version?: string }>> {
-    return this.request<{ version?: string }>('GET', '/version');
+    const url = `${this.apiUrl}/api/v1/version`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          Accept: 'application/json, text/plain',
+        },
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      const text = await response.text();
+      // Version endpoint may return plain text or JSON
+      try {
+        const data = JSON.parse(text);
+        return { success: true, data };
+      } catch {
+        // Plain text version response
+        return { success: true, data: { version: text } };
+      }
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  /**
+   * Create a new project
+   */
+  async createProject(
+    payload: CreateProjectPayload
+  ): Promise<CoolifyApiResponse<CreateProjectResponse>> {
+    return this.request<CreateProjectResponse>('POST', '/projects', payload);
   }
 }

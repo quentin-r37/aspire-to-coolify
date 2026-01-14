@@ -23,18 +23,22 @@ npm run build
 ## Quick Start
 
 ```bash
-# 1. Initialize config file
-aspire2coolify init
-
-# 2. Set your Coolify credentials
+# 1. Set your Coolify credentials
 export COOLIFY_API_URL=https://coolify.example.com
 export COOLIFY_TOKEN=your-api-token
 
-# 3. Deploy your Aspire app
+# 2. Deploy your Aspire app (project is auto-created from directory name)
+aspire2coolify deploy ./AppHost/Program.cs --server-id your-server-uuid
+
+# Or with a custom project name
 aspire2coolify deploy ./AppHost/Program.cs \
-  --project-id your-project-uuid \
   --server-id your-server-uuid \
-  --environment-name production
+  --project-name "My App"
+
+# Or use an existing project
+aspire2coolify deploy ./AppHost/Program.cs \
+  --server-id your-server-uuid \
+  --project-id your-project-uuid
 ```
 
 ## Usage
@@ -55,12 +59,18 @@ aspire2coolify parse ./AppHost/Program.cs -o model.json
 Generate a bash script with curl commands to deploy via the Coolify API:
 
 ```bash
-aspire2coolify generate ./AppHost/Program.cs
+# Simple - script will create project automatically (named from directory)
+aspire2coolify generate ./AppHost/Program.cs --server-id srv-456
 
 # Output to file
-aspire2coolify generate ./AppHost/Program.cs -o deploy.sh
+aspire2coolify generate ./AppHost/Program.cs --server-id srv-456 -o deploy.sh
 
-# With Coolify project/server IDs baked into the script
+# With custom project name
+aspire2coolify generate ./AppHost/Program.cs \
+  --server-id srv-456 \
+  --project-name "My App"
+
+# Use existing project (no project creation in script)
 aspire2coolify generate ./AppHost/Program.cs \
   --project-id proj-123 \
   --server-id srv-456 \
@@ -69,6 +79,19 @@ aspire2coolify generate ./AppHost/Program.cs \
 # Output as JSON (API payloads)
 aspire2coolify generate ./AppHost/Program.cs --json
 ```
+
+#### Generate Options
+
+| Option | Description |
+|--------|-------------|
+| `-o, --output <file>` | Output file for the generated script |
+| `-c, --config <file>` | Config file path |
+| `--no-comments` | Exclude comments from output |
+| `--project-id <id>` | Coolify project UUID (if not provided, script creates a new project) |
+| `--project-name <name>` | Name for the new project (defaults to directory name) |
+| `--server-id <id>` | Coolify server UUID |
+| `--environment-name <name>` | Environment name (e.g., `production`) |
+| `--json` | Output as JSON instead of shell script |
 
 ### Deploy Command
 
@@ -79,23 +102,25 @@ Deploy directly to Coolify via the REST API:
 export COOLIFY_API_URL=https://coolify.example.com
 export COOLIFY_TOKEN=your-api-token
 
-# Dry run (shows what would be deployed)
-aspire2coolify deploy ./AppHost/Program.cs --dry-run \
-  --project-id proj-123 \
-  --server-id srv-456 \
-  --environment-name production
+# Simple deployment - auto-creates project from directory name (e.g., "VibeCode" from "VibeCode.AppHost")
+aspire2coolify deploy ./AppHost/Program.cs --server-id srv-456
 
-# Execute deployment
+# Dry run (shows what would be deployed)
+aspire2coolify deploy ./AppHost/Program.cs --dry-run --server-id srv-456
+
+# With custom project name
+aspire2coolify deploy ./AppHost/Program.cs \
+  --server-id srv-456 \
+  --project-name "My Application"
+
+# Use existing project (skips auto-creation)
 aspire2coolify deploy ./AppHost/Program.cs \
   --project-id proj-123 \
-  --server-id srv-456 \
-  --environment-name production
+  --server-id srv-456
 
 # Deploy and start resources immediately
 aspire2coolify deploy ./AppHost/Program.cs \
-  --project-id proj-123 \
   --server-id srv-456 \
-  --environment-name production \
   --instant-deploy
 ```
 
@@ -105,9 +130,10 @@ aspire2coolify deploy ./AppHost/Program.cs \
 |--------|-------------|
 | `--api-url <url>` | Coolify API URL (or use `COOLIFY_API_URL` env var) |
 | `--token <token>` | Coolify API token (or use `COOLIFY_TOKEN` env var) |
-| `--project-id <id>` | Coolify project UUID |
-| `--server-id <id>` | Coolify server UUID |
-| `--environment-name <name>` | Environment name (e.g., `production`, `staging`) |
+| `--project-id <id>` | Coolify project UUID (optional - if not provided, a new project is created) |
+| `--project-name <name>` | Name for the new project (defaults to directory name, e.g., "VibeCode" from "VibeCode.AppHost") |
+| `--server-id <id>` | Coolify server UUID (required) |
+| `--environment-name <name>` | Environment name (default: `production`) |
 | `--instant-deploy` | Deploy resources immediately after creation |
 | `--dry-run` | Preview deployment without executing |
 
@@ -225,9 +251,10 @@ export default {
     token: 'your-api-token', // Or use COOLIFY_TOKEN env var (recommended)
 
     // Deployment target
-    projectId: 'your-project-uuid',
-    serverId: 'your-server-uuid',
-    environmentName: 'production',
+    serverId: 'your-server-uuid',        // Required
+    projectId: 'your-project-uuid',      // Optional - if not set, a new project is created
+    projectName: 'My App',               // Optional - name for auto-created project
+    environmentName: 'production',       // Optional - defaults to 'production'
   },
   defaults: {
     buildPack: 'nixpacks',
@@ -301,6 +328,7 @@ This tool uses the [Coolify REST API](https://coolify.io/docs/api-reference/api/
 
 | Resource | API Endpoint |
 |----------|--------------|
+| Projects | `POST /api/v1/projects` |
 | PostgreSQL | `POST /api/v1/databases/postgresql` |
 | MySQL | `POST /api/v1/databases/mysql` |
 | MongoDB | `POST /api/v1/databases/mongodb` |

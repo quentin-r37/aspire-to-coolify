@@ -96,9 +96,10 @@ program
   .option('-o, --output <file>', 'Output file for the generated script')
   .option('-c, --config <file>', 'Config file path')
   .option('--no-comments', 'Exclude comments from output')
-  .option('--project-id <id>', 'Coolify project ID')
-  .option('--server-id <id>', 'Coolify server ID')
-  .option('--environment-id <id>', 'Coolify environment ID')
+  .option('--project-id <id>', 'Coolify project UUID (if not provided, script will create a new project)')
+  .option('--project-name <name>', 'Name for the new project (defaults to directory name)')
+  .option('--server-id <id>', 'Coolify server UUID')
+  .option('--environment-name <name>', 'Coolify environment name (e.g., production)')
   .option('--json', 'Output as JSON instead of shell script')
   .action(
     async (
@@ -108,8 +109,9 @@ program
         config?: string;
         comments?: boolean;
         projectId?: string;
+        projectName?: string;
         serverId?: string;
-        environmentId?: string;
+        environmentName?: string;
         json?: boolean;
       }
     ) => {
@@ -126,6 +128,25 @@ program
           ? await import(resolve(options.config)).then((m) => m.default || m)
           : await loadConfig();
 
+        // Derive project name from file path if not provided
+        const deriveProjectName = (fp: string): string => {
+          const dirName = dirname(fp);
+          const parentDir = dirname(dirName);
+          const appHostName = dirName.split(/[/\\]/).pop() || 'AspireApp';
+          const projectDir = parentDir.split(/[/\\]/).pop() || '';
+
+          if (appHostName.includes('.AppHost')) {
+            return appHostName.replace('.AppHost', '');
+          }
+          if (appHostName.includes('AppHost')) {
+            return appHostName.replace('AppHost', '') || projectDir || 'AspireApp';
+          }
+          return projectDir || appHostName;
+        };
+
+        const projectId = options.projectId || config.coolify?.projectId;
+        const projectName = options.projectName || config.coolify?.projectName || deriveProjectName(filePath);
+
         console.log(`Parsing: ${filePath}`);
         const parseResult = parseFile(filePath);
 
@@ -139,9 +160,10 @@ program
         // Generate commands
         const generateResult = generate(parseResult.app, {
           includeComments: options.comments !== false,
-          projectId: options.projectId || config.coolify?.projectId,
+          projectId: projectId,
+          projectName: !projectId ? projectName : undefined,
           serverId: options.serverId || config.coolify?.serverId,
-          environmentId: options.environmentId || config.coolify?.environmentId,
+          environmentName: options.environmentName || config.coolify?.environmentName,
         });
 
         if (generateResult.errors.length > 0) {
@@ -186,7 +208,8 @@ program
   .option('--dry-run', 'Print actions without executing')
   .option('--api-url <url>', 'Coolify API URL')
   .option('--token <token>', 'Coolify API token')
-  .option('--project-id <id>', 'Coolify project UUID')
+  .option('--project-id <id>', 'Coolify project UUID (if not provided, a new project will be created)')
+  .option('--project-name <name>', 'Name for the new project (used when --project-id is not provided)')
   .option('--server-id <id>', 'Coolify server UUID')
   .option('--environment-name <name>', 'Coolify environment name (e.g., production)')
   .option('--instant-deploy', 'Deploy resources immediately after creation')
@@ -199,6 +222,7 @@ program
         apiUrl?: string;
         token?: string;
         projectId?: string;
+        projectName?: string;
         serverId?: string;
         environmentName?: string;
         instantDeploy?: boolean;
@@ -242,20 +266,38 @@ program
         }
 
         // Resolve deployment config
-        const projectUuid = options.projectId || config.coolify?.projectId;
+        let projectUuid = options.projectId || config.coolify?.projectId;
         const serverUuid = options.serverId || config.coolify?.serverId;
-        const environmentName = options.environmentName || config.coolify?.environmentName;
+        const environmentName = options.environmentName || config.coolify?.environmentName || 'production';
 
-        if (!options.dryRun && (!projectUuid || !serverUuid || !environmentName)) {
+        if (!options.dryRun && !serverUuid) {
           console.error('\nMissing required configuration:');
-          if (!projectUuid) console.error('  - project-id (Coolify project UUID)');
-          if (!serverUuid) console.error('  - server-id (Coolify server UUID)');
-          if (!environmentName) console.error('  - environment-name (e.g., production)');
+          console.error('  - server-id (Coolify server UUID)');
           console.error(
             '\nProvide via CLI flags, config file, or environment variables.'
           );
           process.exit(1);
         }
+
+        // Derive project name from file path if not provided
+        const deriveProjectName = (filePath: string): string => {
+          // Get directory name containing Program.cs (typically AppHost folder)
+          const dirName = dirname(filePath);
+          const parentDir = dirname(dirName);
+          const appHostName = dirName.split(/[/\\]/).pop() || 'AspireApp';
+          const projectDir = parentDir.split(/[/\\]/).pop() || '';
+
+          // Try to extract a clean name (e.g., "VibeCode.AppHost" -> "VibeCode")
+          if (appHostName.includes('.AppHost')) {
+            return appHostName.replace('.AppHost', '');
+          }
+          if (appHostName.includes('AppHost')) {
+            return appHostName.replace('AppHost', '') || projectDir || 'AspireApp';
+          }
+          return projectDir || appHostName;
+        };
+
+        const projectName = options.projectName || config.coolify?.projectName || deriveProjectName(filePath);
 
         // Parse the Aspire file
         console.log(`Parsing: ${filePath}`);
@@ -297,6 +339,28 @@ program
             process.exit(1);
           }
           console.log('  ✓ Connected to Coolify API');
+        }
+
+        // Auto-create project if not provided
+        if (!projectUuid) {
+          if (options.dryRun) {
+            console.log(`\n[DRY RUN] Would create project: "${projectName}"`);
+            projectUuid = 'dry-run-project';
+          } else {
+            console.log(`\nCreating project: "${projectName}"...`);
+            const createResult = await client.createProject({
+              name: projectName,
+              description: `Deployed from aspire2coolify`,
+            });
+
+            if (!createResult.success || !createResult.data) {
+              console.error(`  ✗ Failed to create project: ${createResult.error}`);
+              process.exit(1);
+            }
+
+            projectUuid = createResult.data.uuid;
+            console.log(`  ✓ Created project "${projectName}" (uuid: ${projectUuid})`);
+          }
         }
 
         console.log('\nDeploying resources...\n');

@@ -241,7 +241,8 @@ describe('Full Generator', () => {
       references: [],
     };
 
-    const result = generate(app);
+    // Pass projectId to avoid shell variable expansion mode
+    const result = generate(app, { projectId: 'test-project' });
 
     expect(result.script).toContain('#!/bin/bash');
     expect(result.script).toContain('curl -X POST');
@@ -276,5 +277,39 @@ describe('Full Generator', () => {
     expect(result.commands[0].payload.project_uuid).toBe('proj-123');
     expect(result.commands[0].payload.server_uuid).toBe('srv-456');
     expect(result.commands[0].payload.environment_name).toBe('production');
+  });
+
+  it('should generate project creation command when projectName is provided without projectId', () => {
+    const app: AspireApp = {
+      databases: [
+        {
+          name: 'db',
+          type: 'postgres',
+          hasDataVolume: false,
+          environment: [],
+        },
+      ],
+      services: [],
+      storage: [],
+      applications: [],
+      references: [],
+    };
+
+    const result = generate(app, {
+      projectName: 'MyProject',
+      serverId: 'srv-456',
+    });
+
+    // First command should be project creation
+    expect(result.commands[0].endpoint).toBe('/projects');
+    expect(result.commands[0].payload.name).toBe('MyProject');
+
+    // Second command should use $PROJECT_UUID
+    expect(result.commands[1].endpoint).toBe('/databases/postgresql');
+    expect(result.commands[1].payload.project_uuid).toBe('$PROJECT_UUID');
+
+    // Script should contain project creation
+    expect(result.script).toContain('Creating project: MyProject');
+    expect(result.script).toContain('PROJECT_UUID=$(');
   });
 });
