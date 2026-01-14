@@ -10,14 +10,25 @@ import {
   type MongoDbDatabasePayload,
   type RedisDatabasePayload,
   type DockerImageApplicationPayload,
+  type PublicRepositoryApplicationPayload,
+  type PrivateGithubAppApplicationPayload,
   type ServicePayload,
 } from './coolify.js';
+
+export interface GitHubConfig {
+  repository: string;
+  branch?: string;
+  basePath?: string;
+  appUuid?: string; // GitHub App UUID for private repositories
+}
 
 export interface DeployConfig {
   projectUuid: string;
   serverUuid: string;
   environmentName: string;
   instantDeploy?: boolean;
+  github?: GitHubConfig;
+  buildPack?: 'nixpacks' | 'dockerfile' | 'static' | 'dockercompose';
 }
 
 export interface DeployResult {
@@ -329,23 +340,81 @@ async function deployApplication(
     .filter((p): p is number => p !== undefined);
   const portsExposes = ports.length > 0 ? ports.join(',') : '80';
 
-  // For Aspire apps, we create a placeholder Docker image application
-  // The user will need to configure the actual image or git source in Coolify
-  const imageName = application.project || application.name;
-
-  const payload: DockerImageApplicationPayload = {
-    server_uuid: config.serverUuid,
-    project_uuid: config.projectUuid,
-    environment_name: config.environmentName,
-    docker_registry_image_name: imageName,
-    docker_registry_image_tag: 'latest',
-    name: application.name,
-    ports_exposes: portsExposes,
-    instant_deploy: config.instantDeploy ?? false, // Don't auto-deploy apps, user may want to configure first
-  };
-
   try {
-    const response = await client.createDockerImageApplication(payload);
+    let response;
+
+    // If GitHub config is provided, create a GitHub-based application
+    if (config.github?.repository) {
+      // Calculate base directory: combine github basePath with application sourcePath
+      let baseDirectory = config.github.basePath || '';
+      if (application.sourcePath) {
+        // Clean the source path (remove leading ./ or ../)
+        const cleanSourcePath = application.sourcePath.replace(/^\.\.?\//, '');
+        baseDirectory = baseDirectory
+          ? `${baseDirectory}/${cleanSourcePath}`
+          : cleanSourcePath;
+      }
+
+      // Map application buildPack to Coolify-compatible build_pack
+      const mapBuildPack = (bp?: string): 'nixpacks' | 'dockerfile' | 'static' | 'dockercompose' => {
+        if (bp === 'dockerfile') return 'dockerfile';
+        if (bp === 'static') return 'static';
+        if (bp === 'dockercompose') return 'dockercompose';
+        return 'nixpacks'; // Default for 'nixpacks', 'node', and others
+      };
+
+      const buildPack = config.buildPack || mapBuildPack(application.buildPack);
+
+      // Use private GitHub App if appUuid is provided, otherwise use public repository
+      if (config.github.appUuid) {
+        const payload: PrivateGithubAppApplicationPayload = {
+          server_uuid: config.serverUuid,
+          project_uuid: config.projectUuid,
+          environment_name: config.environmentName,
+          github_app_uuid: config.github.appUuid,
+          git_repository: config.github.repository,
+          git_branch: config.github.branch || 'main',
+          build_pack: buildPack,
+          name: application.name,
+          ports_exposes: portsExposes,
+          base_directory: baseDirectory || undefined,
+          instant_deploy: config.instantDeploy ?? false,
+        };
+
+        response = await client.createPrivateGithubAppApplication(payload);
+      } else {
+        const payload: PublicRepositoryApplicationPayload = {
+          server_uuid: config.serverUuid,
+          project_uuid: config.projectUuid,
+          environment_name: config.environmentName,
+          git_repository: config.github.repository,
+          git_branch: config.github.branch || 'main',
+          build_pack: buildPack,
+          name: application.name,
+          ports_exposes: portsExposes,
+          base_directory: baseDirectory || undefined,
+          instant_deploy: config.instantDeploy ?? false,
+        };
+
+        response = await client.createPublicApplication(payload);
+      }
+    } else {
+      // Fallback to Docker image placeholder
+      const imageName = application.project || application.name;
+
+      const payload: DockerImageApplicationPayload = {
+        server_uuid: config.serverUuid,
+        project_uuid: config.projectUuid,
+        environment_name: config.environmentName,
+        docker_registry_image_name: imageName,
+        docker_registry_image_tag: 'latest',
+        name: application.name,
+        ports_exposes: portsExposes,
+        instant_deploy: config.instantDeploy ?? false,
+      };
+
+      response = await client.createDockerImageApplication(payload);
+    }
 
     if (response.success && response.data) {
       return {

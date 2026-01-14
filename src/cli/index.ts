@@ -213,6 +213,11 @@ program
   .option('--server-id <id>', 'Coolify server UUID')
   .option('--environment-name <name>', 'Coolify environment name (e.g., production)')
   .option('--instant-deploy', 'Deploy resources immediately after creation')
+  .option('--github-repo <url>', 'GitHub repository URL for applications (e.g., https://github.com/org/repo)')
+  .option('--github-branch <branch>', 'GitHub branch to deploy (default: main)')
+  .option('--github-base-path <path>', 'Base path within the GitHub repository')
+  .option('--github-app-uuid <uuid>', 'GitHub App UUID for private repositories (from Coolify Sources page)')
+  .option('--build-pack <type>', 'Build pack for applications (nixpacks, dockerfile, static, dockercompose)')
   .action(
     async (
       file: string,
@@ -226,6 +231,11 @@ program
         serverId?: string;
         environmentName?: string;
         instantDeploy?: boolean;
+        githubRepo?: string;
+        githubBranch?: string;
+        githubBasePath?: string;
+        githubAppUuid?: string;
+        buildPack?: string;
       }
     ) => {
       try {
@@ -365,11 +375,33 @@ program
 
         console.log('\nDeploying resources...\n');
 
+        // Resolve GitHub config from CLI options or config file
+        const githubRepo = options.githubRepo || config.github?.repository;
+        const githubBranch = options.githubBranch || config.github?.branch;
+        const githubBasePath = options.githubBasePath || config.github?.basePath;
+        const githubAppUuid = options.githubAppUuid || config.github?.appUuid;
+        const buildPack = options.buildPack as 'nixpacks' | 'dockerfile' | 'static' | 'dockercompose' | undefined;
+
+        if (githubRepo) {
+          if (githubAppUuid) {
+            console.log(`Using private GitHub App: ${githubRepo} (branch: ${githubBranch || 'main'})`);
+          } else {
+            console.log(`Using public GitHub source: ${githubRepo} (branch: ${githubBranch || 'main'})`);
+          }
+        }
+
         const deployResult = await deployToCloudify(client, parseResult.app, {
           projectUuid: projectUuid || 'dry-run-project',
           serverUuid: serverUuid || 'dry-run-server',
           environmentName: environmentName || 'production',
           instantDeploy: options.instantDeploy,
+          github: githubRepo ? {
+            repository: githubRepo,
+            branch: githubBranch,
+            basePath: githubBasePath,
+            appUuid: githubAppUuid,
+          } : undefined,
+          buildPack: buildPack,
         }, {
           dryRun: options.dryRun,
         });

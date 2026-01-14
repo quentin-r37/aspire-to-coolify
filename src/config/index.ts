@@ -4,6 +4,13 @@
 
 import { cosmiconfig } from 'cosmiconfig';
 
+export interface GitHubSourceConfig {
+  repository: string;
+  branch?: string;
+  basePath?: string;
+  appUuid?: string; // GitHub App UUID for private repositories
+}
+
 export interface Aspire2CoolifyConfig {
   coolify?: {
     projectId?: string;
@@ -13,6 +20,7 @@ export interface Aspire2CoolifyConfig {
     apiUrl?: string;
     token?: string;
   };
+  github?: GitHubSourceConfig;
   mappings?: {
     databases?: Record<string, string>;
     services?: Record<string, string>;
@@ -81,6 +89,14 @@ export default {
     // projectId: 'your-project-uuid',
     // serverId: 'your-server-uuid',
     // environmentName: 'production', // e.g., 'production', 'staging'
+  },
+  // GitHub source configuration (optional)
+  // When set, applications will be created with this GitHub repository as the source
+  github: {
+    // repository: 'https://github.com/your-org/your-repo',
+    // branch: 'main', // default branch to deploy
+    // basePath: '', // base path within the repository (optional)
+    // appUuid: '', // GitHub App UUID for private repositories (from Coolify's Sources page)
   },
   mappings: {
     // Custom database type mappings

@@ -124,6 +124,47 @@ export interface DockerfileApplicationPayload {
   instant_deploy?: boolean;
 }
 
+export interface PublicRepositoryApplicationPayload {
+  server_uuid: string;
+  project_uuid: string;
+  environment_name: string;
+  git_repository: string;
+  git_branch: string;
+  build_pack: 'nixpacks' | 'dockerfile' | 'static' | 'dockercompose';
+  name?: string;
+  description?: string;
+  domains?: string;
+  ports_exposes?: string;
+  ports_mappings?: string;
+  git_commit_sha?: string;
+  base_directory?: string;
+  install_command?: string;
+  build_command?: string;
+  start_command?: string;
+  instant_deploy?: boolean;
+}
+
+export interface PrivateGithubAppApplicationPayload {
+  server_uuid: string;
+  project_uuid: string;
+  environment_name: string;
+  github_app_uuid: string;
+  git_repository: string;
+  git_branch: string;
+  build_pack: 'nixpacks' | 'dockerfile' | 'static' | 'dockercompose';
+  name: string;
+  description?: string;
+  domains?: string;
+  ports_exposes?: string;
+  ports_mappings?: string;
+  git_commit_sha?: string;
+  base_directory?: string;
+  install_command?: string;
+  build_command?: string;
+  start_command?: string;
+  instant_deploy?: boolean;
+}
+
 // Service payload types
 export interface ServicePayload {
   server_uuid: string;
@@ -142,7 +183,11 @@ export type DatabasePayload =
   | MongoDbDatabasePayload
   | RedisDatabasePayload;
 
-export type ApplicationPayload = DockerImageApplicationPayload | DockerfileApplicationPayload;
+export type ApplicationPayload =
+  | DockerImageApplicationPayload
+  | DockerfileApplicationPayload
+  | PublicRepositoryApplicationPayload
+  | PrivateGithubAppApplicationPayload;
 
 export class CoolifyApiClient {
   private apiUrl: string;
@@ -263,6 +308,24 @@ export class CoolifyApiClient {
     payload: DockerfileApplicationPayload
   ): Promise<CoolifyApiResponse<CreateApplicationResponse>> {
     return this.request<CreateApplicationResponse>('POST', '/applications/dockerfile', payload);
+  }
+
+  /**
+   * Create a public repository application (GitHub, GitLab, etc.)
+   */
+  async createPublicApplication(
+    payload: PublicRepositoryApplicationPayload
+  ): Promise<CoolifyApiResponse<CreateApplicationResponse>> {
+    return this.request<CreateApplicationResponse>('POST', '/applications/public', payload);
+  }
+
+  /**
+   * Create a private GitHub App application
+   */
+  async createPrivateGithubAppApplication(
+    payload: PrivateGithubAppApplicationPayload
+  ): Promise<CoolifyApiResponse<CreateApplicationResponse>> {
+    return this.request<CreateApplicationResponse>('POST', '/applications/private-github-app', payload);
   }
 
   /**
