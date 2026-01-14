@@ -1,5 +1,5 @@
 /**
- * Application command generator for Coolify
+ * Application command generator for Coolify API
  */
 
 import type { Application, AspireApp } from '../../models/aspire.js';
@@ -12,66 +12,56 @@ const ASPIRE_TO_COOLIFY_BUILDPACK: Record<string, CoolifyBuildPack> = {
   node: 'nixpacks',
 };
 
+export interface ApplicationGeneratorOptions {
+  serverUuid?: string;
+  projectUuid?: string;
+  environmentName?: string;
+  instantDeploy?: boolean;
+}
+
 export function generateApplicationCommand(
   app: Application,
-  aspireApp: AspireApp
+  aspireApp: AspireApp,
+  options: ApplicationGeneratorOptions = {}
 ): CoolifyApplicationCommand {
   const buildPack = ASPIRE_TO_COOLIFY_BUILDPACK[app.buildPack] || 'nixpacks';
 
-  const args: string[] = [`--name "${app.name}"`, `--build-pack ${buildPack}`];
-
-  // Add source path if available
-  if (app.sourcePath) {
-    args.push(`--source "${app.sourcePath}"`);
-  }
-
-  // Build environment variables map
-  const envVars: Record<string, string> = {};
-
-  // Add explicit environment variables
-  for (const env of app.environment) {
-    if (!env.isExpression) {
-      envVars[env.key] = env.value;
-      args.push(`--env "${env.key}=${env.value}"`);
-    }
-  }
-
-  // Add reference-based environment variables
-  const references = aspireApp.references.filter((ref) => ref.from === app.name);
-  for (const ref of references) {
-    const envName = ref.connectionStringEnv || 'CONNECTION_STRING';
-    const envValue = `\${${ref.to}.connectionString}`;
-    envVars[envName] = envValue;
-    args.push(`--env "${envName}=${envValue}"`);
-  }
-
-  // Add port configuration from endpoints
+  // Determine ports to expose
   const ports: number[] = [];
   for (const endpoint of app.endpoints) {
-    if (endpoint.port) {
-      ports.push(endpoint.port);
-    }
-    if (endpoint.envVariable) {
-      // The endpoint exposes a port via environment variable
-      envVars[endpoint.envVariable] = endpoint.port?.toString() || '3000';
-      args.push(`--env "${endpoint.envVariable}=${endpoint.port || 3000}"`);
+    const port = endpoint.targetPort || endpoint.port;
+    if (port) {
+      ports.push(port);
     }
   }
+  const portsExposes = ports.length > 0 ? ports.join(',') : '80';
 
-  // Add external endpoint configuration
-  const hasExternalEndpoint = app.endpoints.some((e) => e.isExternal);
-  if (hasExternalEndpoint) {
-    args.push('--expose');
-  }
+  // Use docker image endpoint for now (most common case)
+  // The user will need to configure the actual image or git source in Coolify
+  const imageName = app.project || app.name;
+
+  // Build the API payload
+  const payload: Record<string, unknown> = {
+    server_uuid: options.serverUuid || '${SERVER_UUID}',
+    project_uuid: options.projectUuid || '${PROJECT_UUID}',
+    environment_name: options.environmentName || '${ENVIRONMENT_NAME}',
+    docker_registry_image_name: imageName,
+    docker_registry_image_tag: 'latest',
+    name: app.name,
+    ports_exposes: portsExposes,
+    instant_deploy: options.instantDeploy ?? false, // Don't auto-deploy, user may need to configure
+  };
+
+  // For now, use dockerimage endpoint as placeholder
+  // TODO: Support dockerfile endpoint when dockerfile content is available
 
   return {
-    command: 'application:create',
+    endpoint: '/applications/dockerimage',
+    method: 'POST',
+    payload,
     name: app.name,
+    resourceType: 'application',
     buildPack,
-    source: app.sourcePath,
-    envVars,
-    ports: ports.length > 0 ? ports : undefined,
-    args,
     comment: `Application: ${app.name} (${app.type})`,
   };
 }

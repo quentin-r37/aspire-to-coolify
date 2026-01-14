@@ -8,10 +8,16 @@
 import { Command } from 'commander';
 import { writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { execSync } from 'node:child_process';
 import { parseFile } from '../parser/index.js';
 import { generate } from '../generators/coolify/index.js';
 import { loadConfig, createConfigTemplate } from '../config/index.js';
+import {
+  CoolifyApiClient,
+  resolveToken,
+  resolveApiUrl,
+  validateCredentials,
+  deployToCloudify,
+} from '../api/index.js';
 
 const program = new Command();
 
@@ -169,21 +175,27 @@ program
 // Deploy command
 program
   .command('deploy <file>')
-  .description('Parse and execute Coolify commands (requires coolify CLI)')
+  .description('Deploy Aspire resources to Coolify via API')
   .option('-c, --config <file>', 'Config file path')
-  .option('--dry-run', 'Print commands without executing')
-  .option('--project-id <id>', 'Coolify project ID')
-  .option('--server-id <id>', 'Coolify server ID')
-  .option('--environment-id <id>', 'Coolify environment ID')
+  .option('--dry-run', 'Print actions without executing')
+  .option('--api-url <url>', 'Coolify API URL')
+  .option('--token <token>', 'Coolify API token')
+  .option('--project-id <id>', 'Coolify project UUID')
+  .option('--server-id <id>', 'Coolify server UUID')
+  .option('--environment-name <name>', 'Coolify environment name (e.g., production)')
+  .option('--instant-deploy', 'Deploy resources immediately after creation')
   .action(
     async (
       file: string,
       options: {
         config?: string;
         dryRun?: boolean;
+        apiUrl?: string;
+        token?: string;
         projectId?: string;
         serverId?: string;
-        environmentId?: string;
+        environmentName?: string;
+        instantDeploy?: boolean;
       }
     ) => {
       try {
@@ -199,6 +211,47 @@ program
           ? await import(resolve(options.config)).then((m) => m.default || m)
           : await loadConfig();
 
+        // Resolve API URL and token
+        const apiUrl = resolveApiUrl({
+          cliApiUrl: options.apiUrl,
+          configApiUrl: config.coolify?.apiUrl,
+        });
+
+        const token = await resolveToken({
+          cliToken: options.token,
+          configToken: config.coolify?.token,
+          prompt: !options.dryRun, // Only prompt if not dry-run
+        });
+
+        // Validate credentials (skip for dry-run)
+        if (!options.dryRun) {
+          const validation = validateCredentials({ apiUrl, token });
+          if (!validation.valid) {
+            console.error('\nConfiguration errors:');
+            for (const error of validation.errors) {
+              console.error(`  - ${error}`);
+            }
+            process.exit(1);
+          }
+        }
+
+        // Resolve deployment config
+        const projectUuid = options.projectId || config.coolify?.projectId;
+        const serverUuid = options.serverId || config.coolify?.serverId;
+        const environmentName = options.environmentName || config.coolify?.environmentName;
+
+        if (!options.dryRun && (!projectUuid || !serverUuid || !environmentName)) {
+          console.error('\nMissing required configuration:');
+          if (!projectUuid) console.error('  - project-id (Coolify project UUID)');
+          if (!serverUuid) console.error('  - server-id (Coolify server UUID)');
+          if (!environmentName) console.error('  - environment-name (e.g., production)');
+          console.error(
+            '\nProvide via CLI flags, config file, or environment variables.'
+          );
+          process.exit(1);
+        }
+
+        // Parse the Aspire file
         console.log(`Parsing: ${filePath}`);
         const parseResult = parseFile(filePath);
 
@@ -210,41 +263,59 @@ program
           process.exit(1);
         }
 
-        // Generate commands
-        const generateResult = generate(parseResult.app, {
-          includeComments: false,
-          projectId: options.projectId || config.coolify?.projectId,
-          serverId: options.serverId || config.coolify?.serverId,
-          environmentId: options.environmentId || config.coolify?.environmentId,
+        // Count resources
+        const totalResources =
+          parseResult.app.databases.length +
+          parseResult.app.storage.length +
+          parseResult.app.services.length +
+          parseResult.app.applications.length;
+
+        console.log(`\nFound ${totalResources} resources to deploy:`);
+        console.log(`  - Databases: ${parseResult.app.databases.length}`);
+        console.log(`  - Storage: ${parseResult.app.storage.length}`);
+        console.log(`  - Services: ${parseResult.app.services.length}`);
+        console.log(`  - Applications: ${parseResult.app.applications.length}`);
+
+        // Create API client and deploy
+        const client = new CoolifyApiClient({
+          apiUrl: apiUrl || 'http://localhost', // Dummy URL for dry-run
+          token: token || 'dry-run-token',
         });
 
-        if (generateResult.errors.length > 0) {
-          console.error('\nGeneration Errors:');
-          for (const error of generateResult.errors) {
-            console.error(`  - ${error}`);
+        // Test connection (unless dry-run)
+        if (!options.dryRun) {
+          console.log('\nTesting API connection...');
+          const testResult = await client.testConnection();
+          if (!testResult.success) {
+            console.error(`  ✗ Failed to connect to Coolify API: ${testResult.error}`);
+            process.exit(1);
           }
-          process.exit(1);
+          console.log('  ✓ Connected to Coolify API');
         }
 
-        // Execute commands
-        console.log(`\nDeploying ${generateResult.commands.length} resources...`);
+        console.log('\nDeploying resources...\n');
 
-        for (const cmd of generateResult.commands) {
-          const fullCommand = `coolify ${cmd.command} ${cmd.args.join(' ')}`;
+        const deployResult = await deployToCloudify(client, parseResult.app, {
+          projectUuid: projectUuid || 'dry-run-project',
+          serverUuid: serverUuid || 'dry-run-server',
+          environmentName: environmentName || 'production',
+          instantDeploy: options.instantDeploy,
+        }, {
+          dryRun: options.dryRun,
+        });
 
-          if (options.dryRun) {
-            console.log(`[DRY RUN] ${fullCommand}`);
-          } else {
-            console.log(`Executing: ${fullCommand}`);
-            try {
-              const output = execSync(fullCommand, { encoding: 'utf-8' });
-              console.log(output);
-            } catch (execErr) {
-              console.error(
-                `Command failed: ${execErr instanceof Error ? execErr.message : execErr}`
-              );
-            }
+        // Summary
+        console.log('\n' + '─'.repeat(50));
+        console.log('Deployment Summary:');
+        console.log(`  ✓ Successful: ${deployResult.successful}`);
+        console.log(`  ✗ Failed: ${deployResult.failed}`);
+
+        if (deployResult.failed > 0) {
+          console.log('\nFailed resources:');
+          for (const result of deployResult.results.filter((r) => !r.success)) {
+            console.log(`  - ${result.name}: ${result.error}`);
           }
+          process.exit(1);
         }
 
         console.log('\nDeployment complete!');

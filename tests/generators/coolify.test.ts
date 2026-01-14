@@ -7,7 +7,7 @@ import type { AspireApp, Database, Service, Application } from '../../src/models
 import { createEmptyAspireApp } from '../../src/models/aspire.js';
 
 describe('Database Generator', () => {
-  it('should generate postgres database command', () => {
+  it('should generate postgres database API command', () => {
     const db: Database = {
       name: 'mydb',
       type: 'postgres',
@@ -19,15 +19,16 @@ describe('Database Generator', () => {
 
     const cmd = generateDatabaseCommand(db);
 
-    expect(cmd.command).toBe('database:create');
-    expect(cmd.type).toBe('postgres');
+    expect(cmd.endpoint).toBe('/databases/postgresql');
+    expect(cmd.method).toBe('POST');
+    expect(cmd.databaseType).toBe('postgresql');
     expect(cmd.name).toBe('mydb');
-    expect(cmd.args).toContain('--name "mydb"');
-    expect(cmd.args).toContain('--type postgres');
-    expect(cmd.args).toContain('--public-port 5432');
+    expect(cmd.payload.name).toBe('mydb');
+    expect(cmd.payload.is_public).toBe(true);
+    expect(cmd.payload.public_port).toBe(5432);
   });
 
-  it('should include custom image in command', () => {
+  it('should include custom image in payload', () => {
     const db: Database = {
       name: 'vectordb',
       type: 'postgres',
@@ -39,26 +40,31 @@ describe('Database Generator', () => {
 
     const cmd = generateDatabaseCommand(db);
 
-    expect(cmd.args).toContain('--image "pgvector/pgvector:pg17"');
-    expect(cmd.image).toBe('pgvector/pgvector:pg17');
+    expect(cmd.payload.image).toBe('pgvector/pgvector:pg17');
   });
 
-  it('should include environment variables', () => {
+  it('should use server/project UUIDs from options', () => {
     const db: Database = {
       name: 'mydb',
       type: 'postgres',
       hasDataVolume: false,
-      environment: [{ key: 'POSTGRES_DB', value: 'appdb' }],
+      environment: [],
     };
 
-    const cmd = generateDatabaseCommand(db);
+    const cmd = generateDatabaseCommand(db, {
+      serverUuid: 'server-123',
+      projectUuid: 'project-456',
+      environmentName: 'production',
+    });
 
-    expect(cmd.args).toContain('--env "POSTGRES_DB=appdb"');
+    expect(cmd.payload.server_uuid).toBe('server-123');
+    expect(cmd.payload.project_uuid).toBe('project-456');
+    expect(cmd.payload.environment_name).toBe('production');
   });
 });
 
 describe('Service Generator', () => {
-  it('should generate rabbitmq service command', () => {
+  it('should generate rabbitmq service API command', () => {
     const service: Service = {
       name: 'messaging',
       type: 'rabbitmq',
@@ -71,10 +77,11 @@ describe('Service Generator', () => {
 
     const cmd = generateServiceCommand(service);
 
-    expect(cmd.command).toBe('service:create');
-    expect(cmd.type).toBe('rabbitmq');
-    expect(cmd.args).toContain('--name "messaging"');
-    expect(cmd.args).toContain('--public-port 5672');
+    expect(cmd.endpoint).toBe('/services');
+    expect(cmd.method).toBe('POST');
+    expect(cmd.serviceType).toBe('rabbitmq');
+    expect(cmd.payload.name).toBe('messaging');
+    expect(cmd.payload.type).toBe('rabbitmq');
   });
 
   it('should map maildev to mailpit', () => {
@@ -89,12 +96,13 @@ describe('Service Generator', () => {
 
     const cmd = generateServiceCommand(service);
 
-    expect(cmd.type).toBe('mailpit');
+    expect(cmd.serviceType).toBe('mailpit');
+    expect(cmd.payload.type).toBe('mailpit');
   });
 });
 
 describe('Application Generator', () => {
-  it('should generate npm app with nixpacks', () => {
+  it('should generate docker image app API command', () => {
     const app: Application = {
       name: 'webapp',
       type: 'npm',
@@ -108,19 +116,39 @@ describe('Application Generator', () => {
     const aspireApp = createEmptyAspireApp();
     const cmd = generateApplicationCommand(app, aspireApp);
 
-    expect(cmd.command).toBe('application:create');
+    expect(cmd.endpoint).toBe('/applications/dockerimage');
+    expect(cmd.method).toBe('POST');
     expect(cmd.buildPack).toBe('nixpacks');
-    expect(cmd.args).toContain('--build-pack nixpacks');
-    expect(cmd.args).toContain('--source "../WebApp"');
-    expect(cmd.args).toContain('--env "NODE_ENV=production"');
+    expect(cmd.payload.name).toBe('webapp');
+    expect(cmd.payload.docker_registry_image_name).toBe('webapp');
   });
 
-  it('should generate app with dockerfile buildpack', () => {
+  it('should include ports from endpoints', () => {
     const app: Application = {
       name: 'api',
       type: 'project',
       buildPack: 'dockerfile',
       publishMode: 'dockerfile',
+      environment: [],
+      endpoints: [
+        { port: 8080, protocol: 'http', isExternal: true },
+        { port: 8081, protocol: 'http', isExternal: false },
+      ],
+      references: [],
+    };
+
+    const aspireApp = createEmptyAspireApp();
+    const cmd = generateApplicationCommand(app, aspireApp);
+
+    expect(cmd.payload.ports_exposes).toBe('8080,8081');
+  });
+
+  it('should use project name for image if available', () => {
+    const app: Application = {
+      name: 'webapp',
+      type: 'project',
+      project: 'MyProject.Web',
+      buildPack: 'nixpacks',
       environment: [],
       endpoints: [],
       references: [],
@@ -129,37 +157,7 @@ describe('Application Generator', () => {
     const aspireApp = createEmptyAspireApp();
     const cmd = generateApplicationCommand(app, aspireApp);
 
-    expect(cmd.buildPack).toBe('dockerfile');
-    expect(cmd.args).toContain('--build-pack dockerfile');
-  });
-
-  it('should include database connection string from references', () => {
-    const app: Application = {
-      name: 'webapp',
-      type: 'npm',
-      buildPack: 'nixpacks',
-      environment: [],
-      endpoints: [],
-      references: ['db'],
-    };
-
-    const aspireApp = createEmptyAspireApp();
-    aspireApp.databases.push({
-      name: 'mydb',
-      type: 'postgres',
-      variableName: 'db',
-      hasDataVolume: false,
-      environment: [],
-    });
-    aspireApp.references.push({
-      from: 'webapp',
-      to: 'mydb',
-      connectionStringEnv: 'DATABASE_URL',
-    });
-
-    const cmd = generateApplicationCommand(app, aspireApp);
-
-    expect(cmd.args).toContain('--env "DATABASE_URL=${mydb.connectionString}"');
+    expect(cmd.payload.docker_registry_image_name).toBe('MyProject.Web');
   });
 });
 
@@ -218,16 +216,16 @@ describe('Full Generator', () => {
     expect(result.commands).toHaveLength(4);
 
     // Databases should come first
-    expect(result.commands[0].command).toBe('database:create');
+    expect(result.commands[0].endpoint).toBe('/databases/postgresql');
     // Storage second
-    expect(result.commands[1].command).toBe('service:create');
+    expect(result.commands[1].endpoint).toBe('/services');
     // Services third
-    expect(result.commands[2].command).toBe('service:create');
+    expect(result.commands[2].endpoint).toBe('/services');
     // Applications last
-    expect(result.commands[3].command).toBe('application:create');
+    expect(result.commands[3].endpoint).toBe('/applications/dockerimage');
   });
 
-  it('should generate valid shell script', () => {
+  it('should generate valid shell script with curl commands', () => {
     const app: AspireApp = {
       databases: [
         {
@@ -246,11 +244,14 @@ describe('Full Generator', () => {
     const result = generate(app);
 
     expect(result.script).toContain('#!/bin/bash');
-    expect(result.script).toContain('database:create');
-    expect(result.script).toContain('--name "db"');
+    expect(result.script).toContain('curl -X POST');
+    expect(result.script).toContain('/api/v1/databases/postgresql');
+    expect(result.script).toContain('"name": "db"');
+    expect(result.script).toContain('COOLIFY_API_URL');
+    expect(result.script).toContain('COOLIFY_TOKEN');
   });
 
-  it('should add global options when provided', () => {
+  it('should include UUIDs in payload when provided', () => {
     const app: AspireApp = {
       databases: [
         {
@@ -269,9 +270,11 @@ describe('Full Generator', () => {
     const result = generate(app, {
       projectId: 'proj-123',
       serverId: 'srv-456',
+      environmentName: 'production',
     });
 
-    expect(result.commands[0].args).toContain('--project-id "proj-123"');
-    expect(result.commands[0].args).toContain('--server-id "srv-456"');
+    expect(result.commands[0].payload.project_uuid).toBe('proj-123');
+    expect(result.commands[0].payload.server_uuid).toBe('srv-456');
+    expect(result.commands[0].payload.environment_name).toBe('production');
   });
 });

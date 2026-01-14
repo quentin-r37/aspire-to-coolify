@@ -1,5 +1,5 @@
 /**
- * Main Coolify generator - orchestrates command generation
+ * Main Coolify generator - orchestrates API command generation
  */
 
 import type { AspireApp } from '../../models/aspire.js';
@@ -14,6 +14,8 @@ export interface GenerateOptions {
   projectId?: string;
   serverId?: string;
   environmentId?: string;
+  environmentName?: string;
+  instantDeploy?: boolean;
 }
 
 export interface GenerateResult {
@@ -23,31 +25,24 @@ export interface GenerateResult {
 }
 
 /**
- * Generate Coolify CLI commands from an Aspire application model
+ * Generate Coolify API commands from an Aspire application model
  */
 export function generate(app: AspireApp, options: GenerateOptions = {}): GenerateResult {
   const commands: CoolifyCommand[] = [];
   const errors: string[] = [];
 
-  // Add global options to commands if provided
-  const globalArgs: string[] = [];
-  if (options.projectId) {
-    globalArgs.push(`--project-id "${options.projectId}"`);
-  }
-  if (options.serverId) {
-    globalArgs.push(`--server-id "${options.serverId}"`);
-  }
-  if (options.environmentId) {
-    globalArgs.push(`--environment-id "${options.environmentId}"`);
-  }
+  // Common options for all generators
+  const generatorOptions = {
+    serverUuid: options.serverId,
+    projectUuid: options.projectId,
+    environmentName: options.environmentName || options.environmentId,
+    instantDeploy: options.instantDeploy,
+  };
 
   // Generate database commands first (they need to exist before apps reference them)
   for (const db of app.databases) {
     try {
-      const cmd = generateDatabaseCommand(db);
-      if (globalArgs.length > 0) {
-        cmd.args.push(...globalArgs);
-      }
+      const cmd = generateDatabaseCommand(db, generatorOptions);
       if (!options.includeComments) {
         delete cmd.comment;
       }
@@ -60,10 +55,7 @@ export function generate(app: AspireApp, options: GenerateOptions = {}): Generat
   // Generate storage service commands
   for (const storage of app.storage) {
     try {
-      const cmd = generateStorageCommand(storage);
-      if (globalArgs.length > 0) {
-        cmd.args.push(...globalArgs);
-      }
+      const cmd = generateStorageCommand(storage, generatorOptions);
       if (!options.includeComments) {
         delete cmd.comment;
       }
@@ -76,10 +68,7 @@ export function generate(app: AspireApp, options: GenerateOptions = {}): Generat
   // Generate other service commands
   for (const service of app.services) {
     try {
-      const cmd = generateServiceCommand(service);
-      if (globalArgs.length > 0) {
-        cmd.args.push(...globalArgs);
-      }
+      const cmd = generateServiceCommand(service, generatorOptions);
       if (!options.includeComments) {
         delete cmd.comment;
       }
@@ -92,10 +81,7 @@ export function generate(app: AspireApp, options: GenerateOptions = {}): Generat
   // Generate application commands last (they reference other resources)
   for (const application of app.applications) {
     try {
-      const cmd = generateApplicationCommand(application, app);
-      if (globalArgs.length > 0) {
-        cmd.args.push(...globalArgs);
-      }
+      const cmd = generateApplicationCommand(application, app, generatorOptions);
       if (!options.includeComments) {
         delete cmd.comment;
       }
@@ -105,7 +91,7 @@ export function generate(app: AspireApp, options: GenerateOptions = {}): Generat
     }
   }
 
-  // Generate the shell script
+  // Generate the shell script with curl commands
   const output: CoolifyOutput = {
     commands,
     script: '',

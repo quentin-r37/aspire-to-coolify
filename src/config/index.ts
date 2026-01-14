@@ -9,7 +9,9 @@ export interface Aspire2CoolifyConfig {
     projectId?: string;
     serverId?: string;
     environmentId?: string;
+    environmentName?: string;
     apiUrl?: string;
+    token?: string;
   };
   mappings?: {
     databases?: Record<string, string>;
@@ -74,10 +76,11 @@ export function createConfigTemplate(): string {
   return `// aspire2coolify.config.js
 export default {
   coolify: {
-    // projectId: 'your-project-id',
-    // serverId: 'your-server-id',
-    // environmentId: 'your-environment-id',
     // apiUrl: 'https://your-coolify-instance.com',
+    // token: 'your-api-token', // Or use COOLIFY_TOKEN env var
+    // projectId: 'your-project-uuid',
+    // serverId: 'your-server-uuid',
+    // environmentName: 'production', // e.g., 'production', 'staging'
   },
   mappings: {
     // Custom database type mappings

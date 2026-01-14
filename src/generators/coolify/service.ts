@@ -1,5 +1,5 @@
 /**
- * Service command generator for Coolify
+ * Service command generator for Coolify API
  */
 
 import type { Service, StorageService } from '../../models/aspire.js';
@@ -16,76 +16,70 @@ const ASPIRE_TO_COOLIFY_SERVICE: Record<string, CoolifyServiceType> = {
   custom: 'custom',
 };
 
-export function generateServiceCommand(service: Service): CoolifyServiceCommand {
+export interface ServiceGeneratorOptions {
+  serverUuid?: string;
+  projectUuid?: string;
+  environmentName?: string;
+  instantDeploy?: boolean;
+}
+
+export function generateServiceCommand(
+  service: Service,
+  options: ServiceGeneratorOptions = {}
+): CoolifyServiceCommand {
   const coolifyType = ASPIRE_TO_COOLIFY_SERVICE[service.type] || 'custom';
 
-  const args: string[] = [`--name "${service.name}"`, `--type ${coolifyType}`];
-
-  // Add custom image if specified (especially for custom services)
-  if (service.image) {
-    const imageWithTag = service.imageTag ? `${service.image}:${service.imageTag}` : service.image;
-    args.push(`--image "${imageWithTag}"`);
-  }
-
-  // Add public port if specified
-  if (service.hostPort) {
-    args.push(`--public-port ${service.hostPort}`);
-  }
-
-  // Add environment variables
-  const envVars: Record<string, string> = {};
-  for (const env of service.environment) {
-    envVars[env.key] = env.value;
-    args.push(`--env "${env.key}=${env.value}"`);
-  }
-
-  return {
-    command: 'service:create',
+  // Build the API payload
+  const payload: Record<string, unknown> = {
+    server_uuid: options.serverUuid || '${SERVER_UUID}',
+    project_uuid: options.projectUuid || '${PROJECT_UUID}',
+    environment_name: options.environmentName || '${ENVIRONMENT_NAME}',
     type: coolifyType,
     name: service.name,
-    image: service.image
-      ? service.imageTag
-        ? `${service.image}:${service.imageTag}`
-        : service.image
-      : undefined,
-    envVars,
-    args,
+    instant_deploy: options.instantDeploy ?? true,
+  };
+
+  return {
+    endpoint: '/services',
+    method: 'POST',
+    payload,
+    name: service.name,
+    resourceType: 'service',
+    serviceType: coolifyType,
     comment: `Service: ${service.name} (${service.type})`,
   };
 }
 
-export function generateStorageCommand(storage: StorageService): CoolifyServiceCommand {
-  const args: string[] = [`--name "${storage.name}"`, `--type minio`];
+export function generateStorageCommand(
+  storage: StorageService,
+  options: ServiceGeneratorOptions = {}
+): CoolifyServiceCommand {
+  // Map storage types to Coolify service types
+  const storageTypeMap: Record<string, CoolifyServiceType> = {
+    minio: 'minio',
+    azurite: 'minio', // Use MinIO as Azure Storage emulator fallback
+    blob: 'minio',
+  };
 
-  // Add custom image if specified
-  if (storage.image) {
-    const imageWithTag = storage.imageTag ? `${storage.image}:${storage.imageTag}` : storage.image;
-    args.push(`--image "${imageWithTag}"`);
-  }
+  const coolifyType = storageTypeMap[storage.type] || 'minio';
 
-  // Add public port if specified
-  if (storage.hostPort) {
-    args.push(`--public-port ${storage.hostPort}`);
-  }
-
-  // Add environment variables
-  const envVars: Record<string, string> = {};
-  for (const env of storage.environment) {
-    envVars[env.key] = env.value;
-    args.push(`--env "${env.key}=${env.value}"`);
-  }
+  // Build the API payload
+  const payload: Record<string, unknown> = {
+    server_uuid: options.serverUuid || '${SERVER_UUID}',
+    project_uuid: options.projectUuid || '${PROJECT_UUID}',
+    environment_name: options.environmentName || '${ENVIRONMENT_NAME}',
+    type: coolifyType,
+    name: storage.name,
+    instant_deploy: options.instantDeploy ?? true,
+  };
 
   return {
-    command: 'service:create',
-    type: 'minio',
+    endpoint: '/services',
+    method: 'POST',
+    payload,
     name: storage.name,
-    image: storage.image
-      ? storage.imageTag
-        ? `${storage.image}:${storage.imageTag}`
-        : storage.image
-      : undefined,
-    envVars,
-    args,
+    resourceType: 'service',
+    serviceType: coolifyType,
     comment: `Storage: ${storage.name} (${storage.type})`,
   };
 }
