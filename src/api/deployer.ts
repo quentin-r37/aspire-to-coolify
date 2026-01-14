@@ -263,10 +263,11 @@ async function deployService(
   config: DeployConfig
 ): Promise<DeployResult> {
   // Map Aspire service types to Coolify service types
+  // Coolify uses full service template names (e.g., 'minio-community-edition')
   const serviceTypeMap: Record<string, string> = {
     rabbitmq: 'rabbitmq',
-    minio: 'minio',
-    azurite: 'minio', // Use MinIO as Azure Storage fallback
+    minio: 'minio-community-edition',
+    azurite: 'minio-community-edition', // Use MinIO as Azure Storage fallback
     keycloak: 'keycloak',
     seq: 'seq',
     maildev: 'mailpit',
