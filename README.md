@@ -136,6 +136,11 @@ aspire2coolify deploy ./AppHost/Program.cs \
 | `--environment-name <name>` | Environment name (default: `production`) |
 | `--instant-deploy` | Deploy resources immediately after creation |
 | `--dry-run` | Preview deployment without executing |
+| `--github-repo <url>` | GitHub repository URL for applications |
+| `--github-branch <branch>` | GitHub branch to deploy (default: `main`) |
+| `--github-base-path <path>` | Base path within the GitHub repository |
+| `--github-app-uuid <uuid>` | GitHub App UUID for private repositories |
+| `--build-pack <type>` | Build pack: `nixpacks`, `dockerfile`, `static`, `dockercompose` |
 
 ### Init Command
 
@@ -144,6 +149,38 @@ Create a configuration file:
 ```bash
 aspire2coolify init
 ```
+
+### GitHub Source Deployment
+
+Deploy applications directly from a GitHub repository instead of creating Docker image placeholders.
+
+#### Public Repository
+
+```bash
+aspire2coolify deploy ./AppHost/Program.cs \
+  --server-id srv-456 \
+  --github-repo https://github.com/your-org/your-repo \
+  --github-branch main \
+  --github-base-path /AppSvelteKit
+```
+
+#### Private Repository (with GitHub App)
+
+For private repositories, you need to configure a GitHub App in Coolify first:
+
+1. Go to your Coolify instance > **Sources** > **Add GitHub App**
+2. Complete the GitHub App setup
+3. Copy the GitHub App UUID from the Sources page
+
+```bash
+aspire2coolify deploy ./AppHost/Program.cs \
+  --server-id srv-456 \
+  --github-repo https://github.com/your-org/your-private-repo \
+  --github-branch main \
+  --github-app-uuid your-github-app-uuid
+```
+
+The `--github-base-path` option is combined with the application's `sourcePath` (from `AddNpmApp("name", "../path")`) to determine the correct directory in the repository.
 
 ## Example
 
@@ -256,8 +293,16 @@ export default {
     projectName: 'My App',               // Optional - name for auto-created project
     environmentName: 'production',       // Optional - defaults to 'production'
   },
+  // GitHub source configuration (optional)
+  // When set, applications are deployed from GitHub instead of Docker image placeholders
+  github: {
+    repository: 'https://github.com/your-org/your-repo',
+    branch: 'main',
+    basePath: '/AppSvelteKit',           // Optional - base path within the repository
+    appUuid: 'your-github-app-uuid',     // Optional - required for private repositories
+  },
   defaults: {
-    buildPack: 'nixpacks',
+    buildPack: 'nixpacks', // 'nixpacks' | 'dockerfile' | 'static' | 'dockercompose'
   },
   output: {
     includeComments: true,
@@ -334,7 +379,9 @@ This tool uses the [Coolify REST API](https://coolify.io/docs/api-reference/api/
 | MongoDB | `POST /api/v1/databases/mongodb` |
 | Redis | `POST /api/v1/databases/redis` |
 | Services | `POST /api/v1/services` |
-| Applications | `POST /api/v1/applications/dockerimage` |
+| Applications (Docker) | `POST /api/v1/applications/dockerimage` |
+| Applications (Public Git) | `POST /api/v1/applications/public` |
+| Applications (Private GitHub) | `POST /api/v1/applications/private-github-app` |
 
 ## Development
 
