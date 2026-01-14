@@ -1,6 +1,6 @@
 {
   "name": "aspire2coolify",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "CLI tool to convert .NET Aspire configurations to Coolify CLI commands",
   "type": "module",
   "main": "dist/cli/index.js",
