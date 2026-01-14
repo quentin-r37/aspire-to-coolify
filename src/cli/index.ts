@@ -6,8 +6,14 @@
  */
 
 import { Command } from 'commander';
-import { writeFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, '../../package.json'), 'utf-8')
+);
 import { parseFile } from '../parser/index.js';
 import { generate } from '../generators/coolify/index.js';
 import { loadConfig, createConfigTemplate } from '../config/index.js';
@@ -24,7 +30,7 @@ const program = new Command();
 program
   .name('aspire2coolify')
   .description('Convert .NET Aspire configurations to Coolify CLI commands')
-  .version('1.0.0');
+  .version(packageJson.version);
 
 // Parse command
 program
