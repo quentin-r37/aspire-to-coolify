@@ -8,7 +8,7 @@
 import { Command } from 'commander';
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageJson = JSON.parse(
@@ -125,7 +125,7 @@ program
 
         // Load config
         const config = options.config
-          ? await import(resolve(options.config)).then((m) => m.default || m)
+          ? await import(pathToFileURL(resolve(options.config)).href).then((m) => m.default || m)
           : await loadConfig();
 
         // Derive project name from file path if not provided
@@ -238,7 +238,7 @@ program
 
         // Load config
         const config = options.config
-          ? await import(resolve(options.config)).then((m) => m.default || m)
+          ? await import(pathToFileURL(resolve(options.config)).href).then((m) => m.default || m)
           : await loadConfig();
 
         // Resolve API URL and token
