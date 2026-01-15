@@ -1,18 +1,38 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { resolveToken, resolveApiUrl, validateCredentials } from '../../src/api/token.js';
+import { resolveToken, resolveApiUrl, validateCredentials, promptForApiUrl } from '../../src/api/token.js';
+import { EventEmitter } from 'node:events';
+
+// Mock readline module
+vi.mock('node:readline', () => ({
+  createInterface: vi.fn(() => {
+    const emitter = new EventEmitter();
+    return {
+      question: vi.fn((prompt: string, callback: (answer: string) => void) => {
+        // Simulate user input after a short delay
+        setTimeout(() => callback('mocked-input'), 0);
+      }),
+      close: vi.fn(),
+      on: emitter.on.bind(emitter),
+      emit: emitter.emit.bind(emitter),
+    };
+  }),
+}));
 
 describe('token.ts', () => {
   const originalEnv = process.env;
+  const originalIsTTY = process.stdin.isTTY;
 
   beforeEach(() => {
     // Reset environment for each test
     process.env = { ...originalEnv };
     delete process.env.COOLIFY_TOKEN;
     delete process.env.COOLIFY_API_URL;
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
     process.env = originalEnv;
+    Object.defineProperty(process.stdin, 'isTTY', { value: originalIsTTY, writable: true });
     vi.restoreAllMocks();
   });
 
@@ -182,6 +202,94 @@ describe('token.ts', () => {
       expect(tokenError).toContain('--token');
       expect(tokenError).toContain('COOLIFY_TOKEN');
       expect(tokenError).toContain('config file');
+    });
+  });
+
+  describe('promptForApiUrl', () => {
+    it('should return user input from prompt', async () => {
+      const result = await promptForApiUrl();
+
+      expect(result).toBe('mocked-input');
+    });
+
+    it('should call readline createInterface', async () => {
+      const readline = await import('node:readline');
+
+      await promptForApiUrl();
+
+      expect(readline.createInterface).toHaveBeenCalledWith({
+        input: process.stdin,
+        output: process.stdout,
+      });
+    });
+  });
+
+  describe('resolveToken with TTY prompt', () => {
+    it('should prompt for token when TTY is available and no other source', async () => {
+      // Mock stdin as TTY
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+
+      const result = await resolveToken({});
+
+      expect(result).toBe('mocked-input');
+    });
+
+    it('should prompt for token when prompt is explicitly true', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+
+      const result = await resolveToken({ prompt: true });
+
+      expect(result).toBe('mocked-input');
+    });
+
+    it('should not prompt when prompt is explicitly false even with TTY', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+
+      const result = await resolveToken({ prompt: false });
+
+      expect(result).toBe(null);
+    });
+
+    it('should prefer config token over prompt', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+
+      const result = await resolveToken({ configToken: 'config-token' });
+
+      expect(result).toBe('config-token');
+    });
+  });
+
+  describe('resolveApiUrl with TTY prompt', () => {
+    it('should prompt for API URL when TTY is available and no other source', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+
+      const result = await resolveApiUrl({});
+
+      expect(result).toBe('mocked-input');
+    });
+
+    it('should prompt for API URL when prompt is explicitly true', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+
+      const result = await resolveApiUrl({ prompt: true });
+
+      expect(result).toBe('mocked-input');
+    });
+
+    it('should not prompt when prompt is explicitly false even with TTY', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+
+      const result = await resolveApiUrl({ prompt: false });
+
+      expect(result).toBe(null);
+    });
+
+    it('should prefer config API URL over prompt', async () => {
+      Object.defineProperty(process.stdin, 'isTTY', { value: true, writable: true });
+
+      const result = await resolveApiUrl({ configApiUrl: 'https://config.example.com' });
+
+      expect(result).toBe('https://config.example.com');
     });
   });
 });
