@@ -27,6 +27,16 @@ const base = import.meta.env.BASE_URL;
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Prevent flash of wrong theme -->
+    <script is:inline>
+      const theme = (() => {
+        const stored = localStorage.getItem('theme');
+        if (stored) return stored;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      })();
+      document.documentElement.dataset.theme = theme;
+    </script>
   </head>
   <body>
     <slot />
@@ -35,16 +45,40 @@ const base = import.meta.env.BASE_URL;
 
 <style is:global>
   :root {
+    /* Shared colors */
     --primary: #6366f1;
     --primary-dark: #4f46e5;
+    --primary-light: #818cf8;
     --secondary: #0ea5e9;
     --accent: #f59e0b;
+    --success: #22c55e;
+
+    /* Light theme (default) */
+    --bg: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --code-bg: #f1f5f9;
+    --card-bg: #ffffff;
+    --nav-bg: rgba(255, 255, 255, 0.8);
+    --hero-gradient-1: rgba(99, 102, 241, 0.08);
+    --hero-gradient-2: rgba(14, 165, 233, 0.05);
+  }
+
+  [data-theme="dark"] {
     --bg: #0f172a;
-    --bg-light: #1e293b;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
     --text: #f8fafc;
     --text-muted: #94a3b8;
     --border: #334155;
-    --success: #22c55e;
+    --code-bg: #1e293b;
+    --card-bg: #0f172a;
+    --nav-bg: rgba(15, 23, 42, 0.8);
+    --hero-gradient-1: rgba(99, 102, 241, 0.15);
+    --hero-gradient-2: rgba(14, 165, 233, 0.1);
   }
 
   * {
@@ -55,6 +89,7 @@ const base = import.meta.env.BASE_URL;
 
   html {
     scroll-behavior: smooth;
+    color-scheme: light dark;
   }
 
   body {
@@ -63,6 +98,7 @@ const base = import.meta.env.BASE_URL;
     color: var(--text);
     line-height: 1.6;
     min-height: 100vh;
+    transition: background-color 0.3s, color 0.3s;
   }
 
   code, pre {
