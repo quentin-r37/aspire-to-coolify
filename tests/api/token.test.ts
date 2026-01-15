@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { resolveToken, resolveApiUrl, validateCredentials, promptForApiUrl } from '../../src/api/token.js';
+import * as apiIndex from '../../src/api/index.js';
 import { EventEmitter } from 'node:events';
 
 // Mock readline module
@@ -290,6 +291,28 @@ describe('token.ts', () => {
       const result = await resolveApiUrl({ configApiUrl: 'https://config.example.com' });
 
       expect(result).toBe('https://config.example.com');
+    });
+  });
+
+  describe('api/index.ts barrel exports', () => {
+    it('should export resolveToken from index', () => {
+      expect(apiIndex.resolveToken).toBe(resolveToken);
+    });
+
+    it('should export resolveApiUrl from index', () => {
+      expect(apiIndex.resolveApiUrl).toBe(resolveApiUrl);
+    });
+
+    it('should export validateCredentials from index', () => {
+      expect(apiIndex.validateCredentials).toBe(validateCredentials);
+    });
+
+    it('should export CoolifyApiClient from index', () => {
+      expect(apiIndex.CoolifyApiClient).toBeDefined();
+    });
+
+    it('should export deployToCloudify from index', () => {
+      expect(apiIndex.deployToCloudify).toBeDefined();
     });
   });
 });
