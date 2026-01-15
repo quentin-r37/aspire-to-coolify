@@ -50,11 +50,13 @@ export async function resolveToken(options: {
  * 1. CLI flag (passed as parameter)
  * 2. COOLIFY_API_URL environment variable
  * 3. Config file apiUrl
+ * 4. Interactive prompt (if TTY)
  */
-export function resolveApiUrl(options: {
+export async function resolveApiUrl(options: {
   cliApiUrl?: string;
   configApiUrl?: string;
-}): string | null {
+  prompt?: boolean;
+}): Promise<string | null> {
   // 1. CLI flag (highest priority)
   if (options.cliApiUrl) {
     return options.cliApiUrl;
@@ -69,6 +71,11 @@ export function resolveApiUrl(options: {
   // 3. Config file apiUrl
   if (options.configApiUrl) {
     return options.configApiUrl;
+  }
+
+  // 4. Interactive prompt (if TTY and prompt enabled)
+  if (options.prompt !== false && process.stdin.isTTY) {
+    return await promptForApiUrl();
   }
 
   return null;

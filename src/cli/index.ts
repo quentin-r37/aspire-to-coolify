@@ -254,9 +254,10 @@ program
           : await loadConfig();
 
         // Resolve API URL and token
-        const apiUrl = resolveApiUrl({
+        const apiUrl = await resolveApiUrl({
           cliApiUrl: options.apiUrl,
           configApiUrl: config.coolify?.apiUrl,
+          prompt: !options.dryRun, // Only prompt if not dry-run
         });
 
         const token = await resolveToken({
