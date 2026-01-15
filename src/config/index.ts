@@ -19,6 +19,7 @@ export interface Aspire2CoolifyConfig {
     environmentName?: string;
     apiUrl?: string;
     token?: string;
+    skipExisting?: boolean;
   };
   github?: GitHubSourceConfig;
   mappings?: {
@@ -89,6 +90,7 @@ export default {
     // projectId: 'your-project-uuid',
     // serverId: 'your-server-uuid',
     // environmentName: 'production', // e.g., 'production', 'staging'
+    // skipExisting: false, // Skip resources that already exist instead of failing
   },
   // GitHub source configuration (optional)
   // When set, applications will be created with this GitHub repository as the source

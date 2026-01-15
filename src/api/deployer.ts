@@ -13,6 +13,9 @@ import {
   type PublicRepositoryApplicationPayload,
   type PrivateGithubAppApplicationPayload,
   type ServicePayload,
+  type CoolifyDatabase,
+  type CoolifyApplication,
+  type CoolifyService,
 } from './coolify.js';
 
 export interface GitHubConfig {
@@ -29,6 +32,7 @@ export interface DeployConfig {
   instantDeploy?: boolean;
   github?: GitHubConfig;
   buildPack?: 'nixpacks' | 'dockerfile' | 'static' | 'dockercompose';
+  skipExisting?: boolean;
 }
 
 export interface DeployResult {
@@ -37,12 +41,67 @@ export interface DeployResult {
   name: string;
   uuid?: string;
   error?: string;
+  skipped?: boolean;
 }
 
 export interface DeploymentSummary {
   results: DeployResult[];
   successful: number;
   failed: number;
+  skipped: number;
+}
+
+/**
+ * Existing resources cache for skip-existing checks
+ */
+interface ExistingResources {
+  databases: Map<string, string>; // name -> uuid
+  applications: Map<string, string>;
+  services: Map<string, string>;
+}
+
+/**
+ * Fetch existing resources from Coolify API
+ */
+async function fetchExistingResources(
+  client: CoolifyApiClient,
+  log: (message: string) => void
+): Promise<ExistingResources> {
+  const existing: ExistingResources = {
+    databases: new Map(),
+    applications: new Map(),
+    services: new Map(),
+  };
+
+  log('Fetching existing resources...');
+
+  // Fetch databases
+  const dbResponse = await client.listDatabases();
+  if (dbResponse.success && dbResponse.data) {
+    for (const db of dbResponse.data) {
+      existing.databases.set(db.name, db.uuid);
+    }
+  }
+
+  // Fetch applications
+  const appResponse = await client.listApplications();
+  if (appResponse.success && appResponse.data) {
+    for (const app of appResponse.data) {
+      existing.applications.set(app.name, app.uuid);
+    }
+  }
+
+  // Fetch services
+  const svcResponse = await client.listServices();
+  if (svcResponse.success && svcResponse.data) {
+    for (const svc of svcResponse.data) {
+      existing.services.set(svc.name, svc.uuid);
+    }
+  }
+
+  log(`  Found ${existing.databases.size} databases, ${existing.applications.size} applications, ${existing.services.size} services`);
+
+  return existing;
 }
 
 /**
@@ -60,6 +119,12 @@ export async function deployToCloudify(
   const results: DeployResult[] = [];
   const log = options.onProgress || console.log;
 
+  // Always fetch existing resources to detect duplicates (unless dry-run)
+  let existing: ExistingResources | null = null;
+  if (!options.dryRun) {
+    existing = await fetchExistingResources(client, log);
+  }
+
   // Deploy databases first
   for (const db of app.databases) {
     if (options.dryRun) {
@@ -71,6 +136,31 @@ export async function deployToCloudify(
         uuid: 'dry-run-uuid',
       });
       continue;
+    }
+
+    // Check if database already exists
+    const existingUuid = existing?.databases.get(db.name);
+    if (existingUuid) {
+      if (config.skipExisting) {
+        log(`  ⊘ Skipped database "${db.name}" (already exists)`);
+        results.push({
+          success: true,
+          resourceType: 'database',
+          name: db.name,
+          uuid: existingUuid,
+          skipped: true,
+        });
+        continue;
+      } else {
+        log(`  ✗ Database "${db.name}" already exists (use --skip-existing to skip)`);
+        results.push({
+          success: false,
+          resourceType: 'database',
+          name: db.name,
+          error: `Database "${db.name}" already exists`,
+        });
+        continue;
+      }
     }
 
     log(`Creating database: ${db.name} (${db.type})...`);
@@ -97,6 +187,31 @@ export async function deployToCloudify(
       continue;
     }
 
+    // Check if storage service already exists
+    const existingUuid = existing?.services.get(storage.name);
+    if (existingUuid) {
+      if (config.skipExisting) {
+        log(`  ⊘ Skipped storage service "${storage.name}" (already exists)`);
+        results.push({
+          success: true,
+          resourceType: 'service',
+          name: storage.name,
+          uuid: existingUuid,
+          skipped: true,
+        });
+        continue;
+      } else {
+        log(`  ✗ Storage service "${storage.name}" already exists (use --skip-existing to skip)`);
+        results.push({
+          success: false,
+          resourceType: 'service',
+          name: storage.name,
+          error: `Storage service "${storage.name}" already exists`,
+        });
+        continue;
+      }
+    }
+
     log(`Creating storage service: ${storage.name} (${storage.type})...`);
     const result = await deployService(client, storage, config);
     results.push(result);
@@ -119,6 +234,31 @@ export async function deployToCloudify(
         uuid: 'dry-run-uuid',
       });
       continue;
+    }
+
+    // Check if service already exists
+    const existingUuid = existing?.services.get(service.name);
+    if (existingUuid) {
+      if (config.skipExisting) {
+        log(`  ⊘ Skipped service "${service.name}" (already exists)`);
+        results.push({
+          success: true,
+          resourceType: 'service',
+          name: service.name,
+          uuid: existingUuid,
+          skipped: true,
+        });
+        continue;
+      } else {
+        log(`  ✗ Service "${service.name}" already exists (use --skip-existing to skip)`);
+        results.push({
+          success: false,
+          resourceType: 'service',
+          name: service.name,
+          error: `Service "${service.name}" already exists`,
+        });
+        continue;
+      }
     }
 
     log(`Creating service: ${service.name} (${service.type})...`);
@@ -145,6 +285,31 @@ export async function deployToCloudify(
       continue;
     }
 
+    // Check if application already exists
+    const existingUuid = existing?.applications.get(application.name);
+    if (existingUuid) {
+      if (config.skipExisting) {
+        log(`  ⊘ Skipped application "${application.name}" (already exists)`);
+        results.push({
+          success: true,
+          resourceType: 'application',
+          name: application.name,
+          uuid: existingUuid,
+          skipped: true,
+        });
+        continue;
+      } else {
+        log(`  ✗ Application "${application.name}" already exists (use --skip-existing to skip)`);
+        results.push({
+          success: false,
+          resourceType: 'application',
+          name: application.name,
+          error: `Application "${application.name}" already exists`,
+        });
+        continue;
+      }
+    }
+
     log(`Creating application: ${application.name}...`);
     const result = await deployApplication(client, application, config);
     results.push(result);
@@ -156,10 +321,11 @@ export async function deployToCloudify(
     }
   }
 
-  const successful = results.filter((r) => r.success).length;
+  const successful = results.filter((r) => r.success && !r.skipped).length;
   const failed = results.filter((r) => !r.success).length;
+  const skipped = results.filter((r) => r.skipped).length;
 
-  return { results, successful, failed };
+  return { results, successful, failed, skipped };
 }
 
 /**

@@ -218,6 +218,7 @@ program
   .option('--github-base-path <path>', 'Base path within the GitHub repository')
   .option('--github-app-uuid <uuid>', 'GitHub App UUID for private repositories (from Coolify Sources page)')
   .option('--build-pack <type>', 'Build pack for applications (nixpacks, dockerfile, static, dockercompose)')
+  .option('--skip-existing', 'Skip resources that already exist instead of failing')
   .action(
     async (
       file: string,
@@ -236,6 +237,7 @@ program
         githubBasePath?: string;
         githubAppUuid?: string;
         buildPack?: string;
+        skipExisting?: boolean;
       }
     ) => {
       try {
@@ -340,6 +342,9 @@ program
           token: token || 'dry-run-token',
         });
 
+        // Resolve skipExisting from CLI or config (needed for project/environment checks)
+        const skipExisting = options.skipExisting || config.coolify?.skipExisting;
+
         // Test connection (unless dry-run)
         if (!options.dryRun) {
           console.log('\nTesting API connection...');
@@ -351,26 +356,83 @@ program
           console.log('  ✓ Connected to Coolify API');
         }
 
+        // Variable to store existing project (for environment check later)
+        let existingProject: { uuid: string; name: string; environments?: { id: number; name: string }[] } | undefined;
+
         // Auto-create project if not provided
         if (!projectUuid) {
           if (options.dryRun) {
             console.log(`\n[DRY RUN] Would create project: "${projectName}"`);
             projectUuid = 'dry-run-project';
           } else {
-            console.log(`\nCreating project: "${projectName}"...`);
-            const createResult = await client.createProject({
-              name: projectName,
-              description: `Deployed from aspire2coolify`,
-            });
-
-            if (!createResult.success || !createResult.data) {
-              console.error(`  ✗ Failed to create project: ${createResult.error}`);
-              process.exit(1);
+            // Check if project with same name already exists
+            console.log(`\nChecking for existing project: "${projectName}"...`);
+            const projectsResult = await client.listProjects();
+            if (projectsResult.success && projectsResult.data) {
+              existingProject = projectsResult.data.find(p => p.name === projectName);
+              if (existingProject) {
+                if (skipExisting) {
+                  console.log(`  ⊘ Using existing project "${projectName}" (uuid: ${existingProject.uuid})`);
+                  projectUuid = existingProject.uuid;
+                } else {
+                  console.error(`  ✗ Project "${projectName}" already exists (use --skip-existing to reuse)`);
+                  process.exit(1);
+                }
+              }
             }
 
-            projectUuid = createResult.data.uuid;
-            console.log(`  ✓ Created project "${projectName}" (uuid: ${projectUuid})`);
+            // Create project if not found
+            if (!projectUuid) {
+              console.log(`Creating project: "${projectName}"...`);
+              const createResult = await client.createProject({
+                name: projectName,
+                description: `Deployed from aspire2coolify`,
+              });
+
+              if (!createResult.success || !createResult.data) {
+                console.error(`  ✗ Failed to create project: ${createResult.error}`);
+                process.exit(1);
+              }
+
+              projectUuid = createResult.data.uuid;
+              console.log(`  ✓ Created project "${projectName}" (uuid: ${projectUuid})`);
+            }
           }
+        }
+
+        // Check/create environment (unless dry-run)
+        if (!options.dryRun && projectUuid && projectUuid !== 'dry-run-project') {
+          // Check if environment already exists in the project (if API returns environments)
+          const envExists = existingProject?.environments?.some(e => e.name === environmentName);
+
+          if (envExists) {
+            if (skipExisting) {
+              console.log(`  ⊘ Using existing environment "${environmentName}"`);
+            } else {
+              console.error(`  ✗ Environment "${environmentName}" already exists in project (use --skip-existing to reuse)`);
+              process.exit(1);
+            }
+          } else if (existingProject) {
+            // Project exists - try to create the environment
+            // Note: API may not return environments in listProjects (bug #7702), so we handle "already exists" error
+            console.log(`Creating environment: "${environmentName}"...`);
+            const envResult = await client.createEnvironment(projectUuid, environmentName);
+            if (envResult.success) {
+              console.log(`  ✓ Created environment "${environmentName}"`);
+            } else if (envResult.error?.toLowerCase().includes('already exists')) {
+              // Environment exists but wasn't returned by listProjects API
+              if (skipExisting) {
+                console.log(`  ⊘ Using existing environment "${environmentName}"`);
+              } else {
+                console.error(`  ✗ Environment "${environmentName}" already exists in project (use --skip-existing to reuse)`);
+                process.exit(1);
+              }
+            } else {
+              console.error(`  ✗ Failed to create environment: ${envResult.error}`);
+              process.exit(1);
+            }
+          }
+          // Note: If project was just created, the default 'production' environment is auto-created by Coolify
         }
 
         console.log('\nDeploying resources...\n');
@@ -402,6 +464,7 @@ program
             appUuid: githubAppUuid,
           } : undefined,
           buildPack: buildPack,
+          skipExisting: skipExisting,
         }, {
           dryRun: options.dryRun,
         });
@@ -411,6 +474,9 @@ program
         console.log('Deployment Summary:');
         console.log(`  ✓ Successful: ${deployResult.successful}`);
         console.log(`  ✗ Failed: ${deployResult.failed}`);
+        if (deployResult.skipped > 0) {
+          console.log(`  ⊘ Skipped: ${deployResult.skipped}`);
+        }
 
         if (deployResult.failed > 0) {
           console.log('\nFailed resources:');

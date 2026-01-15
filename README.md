@@ -122,6 +122,11 @@ aspire2coolify deploy ./AppHost/Program.cs \
 aspire2coolify deploy ./AppHost/Program.cs \
   --server-id srv-456 \
   --instant-deploy
+
+# Skip resources that already exist (idempotent deployment)
+aspire2coolify deploy ./AppHost/Program.cs \
+  --server-id srv-456 \
+  --skip-existing
 ```
 
 #### Deploy Options
@@ -135,6 +140,7 @@ aspire2coolify deploy ./AppHost/Program.cs \
 | `--server-id <id>` | Coolify server UUID (required) |
 | `--environment-name <name>` | Environment name (default: `production`) |
 | `--instant-deploy` | Deploy resources immediately after creation |
+| `--skip-existing` | Skip resources that already exist instead of failing |
 | `--dry-run` | Preview deployment without executing |
 | `--github-repo <url>` | GitHub repository URL for applications |
 | `--github-branch <branch>` | GitHub branch to deploy (default: `main`) |
@@ -292,6 +298,7 @@ export default {
     projectId: 'your-project-uuid',      // Optional - if not set, a new project is created
     projectName: 'My App',               // Optional - name for auto-created project
     environmentName: 'production',       // Optional - defaults to 'production'
+    skipExisting: false,                 // Optional - skip resources that already exist
   },
   // GitHub source configuration (optional)
   // When set, applications are deployed from GitHub instead of Docker image placeholders
@@ -373,15 +380,17 @@ This tool uses the [Coolify REST API](https://coolify.io/docs/api-reference/api/
 
 | Resource | API Endpoint |
 |----------|--------------|
-| Projects | `POST /api/v1/projects` |
+| Projects | `POST /api/v1/projects`, `GET /api/v1/projects` |
 | PostgreSQL | `POST /api/v1/databases/postgresql` |
 | MySQL | `POST /api/v1/databases/mysql` |
 | MongoDB | `POST /api/v1/databases/mongodb` |
 | Redis | `POST /api/v1/databases/redis` |
-| Services | `POST /api/v1/services` |
+| Databases (list) | `GET /api/v1/databases` |
+| Services | `POST /api/v1/services`, `GET /api/v1/services` |
 | Applications (Docker) | `POST /api/v1/applications/dockerimage` |
 | Applications (Public Git) | `POST /api/v1/applications/public` |
 | Applications (Private GitHub) | `POST /api/v1/applications/private-github-app` |
+| Applications (list) | `GET /api/v1/applications` |
 
 ## Development
 

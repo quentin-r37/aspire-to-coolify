@@ -35,6 +35,39 @@ export interface CreateProjectResponse {
   uuid: string;
 }
 
+// List response types
+export interface CoolifyEnvironment {
+  id: number;
+  name: string;
+  project_id: number;
+  created_at?: string;
+  updated_at?: string;
+  description?: string;
+}
+
+export interface CoolifyProject {
+  uuid: string;
+  name: string;
+  description?: string;
+  environments?: CoolifyEnvironment[];
+}
+
+export interface CoolifyDatabase {
+  uuid: string;
+  name: string;
+  type?: string;
+}
+
+export interface CoolifyApplication {
+  uuid: string;
+  name: string;
+}
+
+export interface CoolifyService {
+  uuid: string;
+  name: string;
+}
+
 // Database payload types
 export interface PostgresDatabasePayload {
   server_uuid: string;
@@ -381,5 +414,43 @@ export class CoolifyApiClient {
     payload: CreateProjectPayload
   ): Promise<CoolifyApiResponse<CreateProjectResponse>> {
     return this.request<CreateProjectResponse>('POST', '/projects', payload);
+  }
+
+  /**
+   * List all projects
+   */
+  async listProjects(): Promise<CoolifyApiResponse<CoolifyProject[]>> {
+    return this.request<CoolifyProject[]>('GET', '/projects');
+  }
+
+  /**
+   * Create an environment in a project
+   */
+  async createEnvironment(
+    projectUuid: string,
+    name: string
+  ): Promise<CoolifyApiResponse<CoolifyEnvironment>> {
+    return this.request<CoolifyEnvironment>('POST', `/projects/${projectUuid}/environments`, { name });
+  }
+
+  /**
+   * List all databases
+   */
+  async listDatabases(): Promise<CoolifyApiResponse<CoolifyDatabase[]>> {
+    return this.request<CoolifyDatabase[]>('GET', '/databases');
+  }
+
+  /**
+   * List all applications
+   */
+  async listApplications(): Promise<CoolifyApiResponse<CoolifyApplication[]>> {
+    return this.request<CoolifyApplication[]>('GET', '/applications');
+  }
+
+  /**
+   * List all services
+   */
+  async listServices(): Promise<CoolifyApiResponse<CoolifyService[]>> {
+    return this.request<CoolifyService[]>('GET', '/services');
   }
 }
