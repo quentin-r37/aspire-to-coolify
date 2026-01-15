@@ -1,0 +1,107 @@
+name: Watch Coolify API Changes
+
+on:
+  schedule:
+    # Run weekly on Monday at 8:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check-api-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download current OpenAPI spec
+        run: |
+          curl -sL https://raw.githubusercontent.com/coollabsio/coolify-docs/v4.x/docs/public/openapi.yml -o openapi-current.yml
+
+      - name: Calculate current hash
+        id: current
+        run: |
+          HASH=$(sha256sum openapi-current.yml | cut -d ' ' -f 1)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "Current hash: $HASH"
+
+      - name: Restore previous hash from cache
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .openapi-hash
+          key: openapi-hash-${{ steps.current.outputs.hash }}
+          restore-keys: |
+            openapi-hash-
+
+      - name: Check for changes
+        id: check
+        run: |
+          if [ -f .openapi-hash ]; then
+            PREVIOUS_HASH=$(cat .openapi-hash)
+            echo "Previous hash: $PREVIOUS_HASH"
+            if [ "$PREVIOUS_HASH" != "${{ steps.current.outputs.hash }}" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "API spec has changed!"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "No changes detected"
+            fi
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "First run - no previous hash found"
+          fi
+
+      - name: Save current hash to cache
+        if: steps.check.outputs.changed == 'true' || steps.cache.outputs.cache-hit != 'true'
+        run: |
+          echo "${{ steps.current.outputs.hash }}" > .openapi-hash
+
+      - name: Update cache
+        if: steps.check.outputs.changed == 'true' || steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .openapi-hash
+          key: openapi-hash-${{ steps.current.outputs.hash }}
+
+      - name: Check for existing open issue
+        if: steps.check.outputs.changed == 'true'
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh issue list --repo ${{ github.repository }} --state open --label "api-update" --json number --jq 'length')
+          if [ "$EXISTING" -gt 0 ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "An open issue already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue for API changes
+        if: steps.check.outputs.changed == 'true' && steps.existing.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo ${{ github.repository }} \
+            --title "🔄 Coolify API spec has been updated" \
+            --label "api-update" \
+            --body "## Coolify OpenAPI Specification Update
+
+          The Coolify API specification has changed. This may require updates to aspire2coolify to maintain compatibility.
+
+          **Source file:** https://github.com/coollabsio/coolify-docs/blob/v4.x/docs/public/openapi.yml
+
+          ### Action items
+          - [ ] Review the API changes in the Coolify documentation
+          - [ ] Identify breaking changes or new endpoints
+          - [ ] Update \`src/api/coolify.ts\` if needed
+          - [ ] Update \`src/models/coolify.ts\` types if needed
+          - [ ] Update \`src/api/deployer.ts\` deployment logic if needed
+          - [ ] Add/update tests for new functionality
+
+          ---
+          *This issue was automatically created by the [Watch Coolify API](${{ github.server_url }}/${{ github.repository }}/actions/workflows/watch-coolify-api.yml) workflow.*"
