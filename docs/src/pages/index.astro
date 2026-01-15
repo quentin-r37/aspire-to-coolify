@@ -85,10 +85,23 @@ const supportedResources = {
         </a>
       </div>
       <div class="hero-install">
-        <code>npm install -g aspire2coolify</code>
-        <button class="copy-btn" onclick="navigator.clipboard.writeText('npm install -g aspire2coolify')">
-          Copy
-        </button>
+        <div class="install-label">Install with npm</div>
+        <div class="install-command">
+          <span class="install-prompt">$</span>
+          <code>npm install -g aspire2coolify</code>
+          <button class="copy-btn" id="hero-copy-btn" aria-label="Copy to clipboard">
+            <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+        </div>
+        <div class="install-alt">
+          or run directly: <code>npx aspire2coolify</code>
+        </div>
       </div>
     </div>
   </header>
@@ -117,11 +130,25 @@ const supportedResources = {
       <p class="section-subtitle">Get up and running in minutes</p>
 
       <div class="steps">
-        <div class="step">
+        <div class="step step-install">
           <div class="step-number">1</div>
           <div class="step-content">
-            <h3>Install</h3>
-            <pre><code>npm install -g aspire2coolify</code></pre>
+            <h3>Install the CLI</h3>
+            <div class="install-box">
+              <div class="install-tabs">
+                <button class="tab active" data-tab="npm">npm</button>
+                <button class="tab" data-tab="npx">npx</button>
+                <button class="tab" data-tab="yarn">yarn</button>
+                <button class="tab" data-tab="pnpm">pnpm</button>
+              </div>
+              <div class="install-panels">
+                <pre class="panel active" data-panel="npm"><code><span class="prompt">$</span> npm install -g aspire2coolify</code></pre>
+                <pre class="panel" data-panel="npx"><code><span class="prompt">$</span> npx aspire2coolify &lt;command&gt;</code></pre>
+                <pre class="panel" data-panel="yarn"><code><span class="prompt">$</span> yarn global add aspire2coolify</code></pre>
+                <pre class="panel" data-panel="pnpm"><code><span class="prompt">$</span> pnpm add -g aspire2coolify</code></pre>
+              </div>
+            </div>
+            <p class="install-note">Requires Node.js 18+</p>
           </div>
         </div>
 
@@ -385,28 +412,60 @@ builder.Build().Run();</code></pre>
   }
 
   .hero-install {
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    transition: background-color 0.3s, border-color 0.3s;
+    gap: 0.75rem;
+    margin-top: 1rem;
   }
 
-  .hero-install code {
-    color: var(--secondary);
-    font-size: 0.9rem;
+  .install-label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .install-command {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--code-bg);
+    border: 2px solid var(--border);
+    border-radius: 0.75rem;
+    transition: all 0.3s;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  }
+
+  .install-command:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .install-prompt {
+    color: var(--success);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .install-command code {
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: 500;
   }
 
   .copy-btn {
-    padding: 0.25rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
     background: var(--bg-tertiary);
     border: none;
-    border-radius: 0.25rem;
+    border-radius: 0.5rem;
     color: var(--text-muted);
-    font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s;
   }
@@ -414,6 +473,36 @@ builder.Build().Run();</code></pre>
   .copy-btn:hover {
     background: var(--primary);
     color: white;
+  }
+
+  .copy-btn .check-icon {
+    display: none;
+  }
+
+  .copy-btn.copied .copy-icon {
+    display: none;
+  }
+
+  .copy-btn.copied .check-icon {
+    display: block;
+    color: var(--success);
+  }
+
+  .copy-btn.copied {
+    background: rgba(34, 197, 94, 0.1);
+  }
+
+  .install-alt {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .install-alt code {
+    color: var(--secondary);
+    background: var(--bg-tertiary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
   }
 
   /* Sections */
@@ -531,6 +620,84 @@ builder.Build().Run();</code></pre>
   .step-content code {
     color: var(--secondary);
     font-size: 0.9rem;
+  }
+
+  /* Install Box with Tabs */
+  .install-box {
+    background: var(--code-bg);
+    border: 2px solid var(--border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .install-box:hover {
+    border-color: var(--primary);
+  }
+
+  .install-tabs {
+    display: flex;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .install-tabs .tab {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .install-tabs .tab:hover {
+    color: var(--text);
+    background: var(--code-bg);
+  }
+
+  .install-tabs .tab.active {
+    color: var(--primary);
+    background: var(--code-bg);
+    border-bottom-color: var(--primary);
+  }
+
+  .install-panels {
+    position: relative;
+  }
+
+  .install-panels .panel {
+    display: none;
+    margin: 0;
+    padding: 1.25rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .install-panels .panel.active {
+    display: block;
+  }
+
+  .install-panels .panel code {
+    font-size: 1rem;
+    color: var(--text);
+  }
+
+  .install-panels .prompt {
+    color: var(--success);
+    margin-right: 0.5rem;
+    font-weight: 600;
+  }
+
+  .install-note {
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
   }
 
   .example {
@@ -708,3 +875,38 @@ builder.Build().Run();</code></pre>
     }
   }
 </style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Hero copy button
+    const copyBtn = document.getElementById('hero-copy-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        await navigator.clipboard.writeText('npm install -g aspire2coolify');
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    // Install tabs
+    const tabs = document.querySelectorAll('.install-tabs .tab');
+    const panels = document.querySelectorAll('.install-panels .panel');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetPanel = tab.dataset.tab;
+
+        // Update tabs
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Update panels
+        panels.forEach(p => {
+          p.classList.toggle('active', p.dataset.panel === targetPanel);
+        });
+      });
+    });
+  });
+</script>
