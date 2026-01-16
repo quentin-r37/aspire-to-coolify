@@ -411,6 +411,84 @@ npm run dev
 npm run lint
 ```
 
+## Programmatic API
+
+You can also use aspire2coolify as a library in your Node.js projects:
+
+```bash
+npm install aspire2coolify
+```
+
+### Basic Usage
+
+```typescript
+import { parseFile, generate, deployToCloudify, CoolifyApiClient } from 'aspire2coolify';
+
+// Parse an Aspire Program.cs file
+const { app, errors, warnings } = parseFile('./AppHost/Program.cs');
+
+// Generate a bash script
+const { script, commands } = generate(app, {
+  projectName: 'my-app',
+  serverId: 'your-server-uuid',
+});
+
+console.log(script);
+
+// Or deploy directly via API
+const client = new CoolifyApiClient('https://coolify.example.com', 'your-token');
+const summary = await deployToCloudify(client, app, {
+  projectUuid: 'project-uuid',
+  serverUuid: 'server-uuid',
+  environmentName: 'production',
+});
+
+console.log(`Deployed: ${summary.successful} succeeded, ${summary.failed} failed`);
+```
+
+### Sub-module Imports
+
+```typescript
+// Parser only
+import { parseFile, parseSource } from 'aspire2coolify/parser';
+
+// API client only
+import { CoolifyApiClient, deployToCloudify } from 'aspire2coolify/api';
+
+// Generator only
+import { generate } from 'aspire2coolify/generator';
+```
+
+### Available Exports
+
+| Export | Description |
+|--------|-------------|
+| `parseFile(path)` | Parse a Program.cs file |
+| `parseSource(code)` | Parse C# source code string |
+| `generate(app, options)` | Generate Coolify deployment script |
+| `CoolifyApiClient` | Coolify REST API client class |
+| `deployToCloudify(client, app, config)` | Deploy resources to Coolify |
+| `resolveToken()` | Resolve API token from env/config |
+| `resolveApiUrl()` | Resolve API URL from env/config |
+| `createEmptyAspireApp()` | Create an empty AspireApp model |
+
+### TypeScript Types
+
+All types are exported for TypeScript users:
+
+```typescript
+import type {
+  AspireApp,
+  Database,
+  Service,
+  Application,
+  ParseResult,
+  GenerateResult,
+  DeployConfig,
+  DeploymentSummary,
+} from 'aspire2coolify';
+```
+
 ## Support
 
 If this project helped you save time or simplified your deployments, consider supporting its development:

@@ -3,7 +3,26 @@
   "version": "2.0.23",
   "description": "CLI tool to convert .NET Aspire configurations to Coolify CLI commands",
   "type": "module",
-  "main": "dist/cli/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./parser": {
+      "import": "./dist/parser/index.js",
+      "types": "./dist/parser/index.d.ts"
+    },
+    "./api": {
+      "import": "./dist/api/index.js",
+      "types": "./dist/api/index.d.ts"
+    },
+    "./generator": {
+      "import": "./dist/generators/coolify/index.js",
+      "types": "./dist/generators/coolify/index.d.ts"
+    }
+  },
   "bin": {
     "aspire2coolify": "dist/cli/index.js"
   },
@@ -14,7 +33,7 @@
     "type": "git",
     "url": "git+https://github.com/quentin-r37/aspire-to-coolify.git"
   },
-  "homepage": "https://github.com/quentin-r37/aspire-to-coolify#readme",
+  "homepage": "https://quentin-r37.github.io/aspire-to-coolify/",
   "bugs": {
     "url": "https://github.com/quentin-r37/aspire-to-coolify/issues"
   },
