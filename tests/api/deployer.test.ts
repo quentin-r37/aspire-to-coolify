@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { deployToCloudify, type DeployConfig } from '../../src/api/deployer.js';
+import { deployToCoolify, type DeployConfig } from '../../src/api/deployer.js';
 import { CoolifyApiClient } from '../../src/api/coolify.js';
 import type { AspireApp } from '../../src/models/aspire.js';
 import { createEmptyAspireApp } from '../../src/models/aspire.js';
@@ -23,7 +23,7 @@ vi.mock('../../src/api/coolify.js', () => {
   };
 });
 
-describe('deployToCloudify', () => {
+describe('deployToCoolify', () => {
   let mockClient: {
     listDatabases: ReturnType<typeof vi.fn>;
     listApplications: ReturnType<typeof vi.fn>;
@@ -70,7 +70,7 @@ describe('deployToCloudify', () => {
       };
 
       const logs: string[] = [];
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig, {
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig, {
         dryRun: true,
         onProgress: (msg) => logs.push(msg),
       });
@@ -90,7 +90,7 @@ describe('deployToCloudify', () => {
         applications: [{ name: 'webapp', type: 'npm', buildPack: 'nixpacks', environment: [], endpoints: [], references: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig, { dryRun: true });
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig, { dryRun: true });
 
       expect(result.results).toHaveLength(3);
       result.results.forEach((r) => {
@@ -107,7 +107,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'mydb', type: 'postgres', hasDataVolume: true, environment: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createPostgresDatabase).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -128,7 +128,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'mysqldb', type: 'mysql', hasDataVolume: false, environment: [] }],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createMysqlDatabase).toHaveBeenCalled();
     });
@@ -139,7 +139,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'mongo', type: 'mongodb', hasDataVolume: false, environment: [] }],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createMongoDatabase).toHaveBeenCalled();
     });
@@ -150,7 +150,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'cache', type: 'redis', hasDataVolume: false, environment: [] }],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createRedisDatabase).toHaveBeenCalled();
     });
@@ -161,7 +161,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'unknown', type: 'unknown' as any, hasDataVolume: false, environment: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toContain('Unsupported database type');
@@ -175,7 +175,7 @@ describe('deployToCloudify', () => {
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createPostgresDatabase).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('SQL Server not supported'));
@@ -198,7 +198,7 @@ describe('deployToCloudify', () => {
         ],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createPostgresDatabase).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -213,7 +213,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'db', type: 'postgres', hasDataVolume: false, hostPort: 5432, environment: [] }],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createPostgresDatabase).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -234,7 +234,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'db', type: 'postgres', hasDataVolume: false, environment: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toBe('Database limit exceeded');
@@ -248,7 +248,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'db', type: 'postgres', hasDataVolume: false, environment: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toBe('Network error');
@@ -262,7 +262,7 @@ describe('deployToCloudify', () => {
         services: [{ name: 'messaging', type: 'rabbitmq', environment: [], volumes: [], endpoints: [], references: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createService).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -279,7 +279,7 @@ describe('deployToCloudify', () => {
         services: [{ name: 'storage', type: 'minio', environment: [], volumes: [], endpoints: [], references: [] }],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createService).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -294,7 +294,7 @@ describe('deployToCloudify', () => {
         storage: [{ name: 'blob', type: 'minio', environment: [], volumes: [] }],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createService).toHaveBeenCalled();
     });
@@ -310,7 +310,7 @@ describe('deployToCloudify', () => {
         services: [{ name: 'svc', type: 'custom', environment: [], volumes: [], endpoints: [], references: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toBe('Service type not supported');
@@ -324,7 +324,7 @@ describe('deployToCloudify', () => {
         services: [{ name: 'svc', type: 'rabbitmq', environment: [], volumes: [], endpoints: [], references: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toBe('API timeout');
@@ -348,7 +348,7 @@ describe('deployToCloudify', () => {
         ],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createDockerImageApplication).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -382,7 +382,7 @@ describe('deployToCloudify', () => {
         },
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, configWithGithub);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, configWithGithub);
 
       expect(mockClient.createPublicApplication).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -417,7 +417,7 @@ describe('deployToCloudify', () => {
         },
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, configWithPrivateGithub);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, configWithPrivateGithub);
 
       expect(mockClient.createPrivateGithubAppApplication).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -454,7 +454,7 @@ describe('deployToCloudify', () => {
         },
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, configWithBasePath);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, configWithBasePath);
 
       expect(mockClient.createPublicApplication).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -487,7 +487,7 @@ describe('deployToCloudify', () => {
         },
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, configWithGithub);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, configWithGithub);
 
       expect(mockClient.createPublicApplication).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -517,7 +517,7 @@ describe('deployToCloudify', () => {
         github: { repository: 'https://github.com/user/repo' },
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, configWithBuildPack);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, configWithBuildPack);
 
       expect(mockClient.createPublicApplication).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -541,7 +541,7 @@ describe('deployToCloudify', () => {
         ],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createDockerImageApplication).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -570,7 +570,7 @@ describe('deployToCloudify', () => {
         ],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toBe('Invalid image name');
@@ -593,7 +593,7 @@ describe('deployToCloudify', () => {
         ],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(result.failed).toBe(1);
       expect(result.results[0].error).toBe('Timeout');
@@ -612,7 +612,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'mydb', type: 'postgres', hasDataVolume: false, environment: [] }],
       };
 
-      const result = await deployToCloudify(
+      const result = await deployToCoolify(
         mockClient as unknown as CoolifyApiClient,
         app,
         { ...baseConfig, skipExisting: true }
@@ -635,7 +635,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'mydb', type: 'postgres', hasDataVolume: false, environment: [] }],
       };
 
-      const result = await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      const result = await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(mockClient.createPostgresDatabase).not.toHaveBeenCalled();
       expect(result.failed).toBe(1);
@@ -653,7 +653,7 @@ describe('deployToCloudify', () => {
         services: [{ name: 'rabbitmq', type: 'rabbitmq', environment: [], volumes: [], endpoints: [], references: [] }],
       };
 
-      const result = await deployToCloudify(
+      const result = await deployToCoolify(
         mockClient as unknown as CoolifyApiClient,
         app,
         { ...baseConfig, skipExisting: true }
@@ -676,7 +676,7 @@ describe('deployToCloudify', () => {
         ],
       };
 
-      const result = await deployToCloudify(
+      const result = await deployToCoolify(
         mockClient as unknown as CoolifyApiClient,
         app,
         { ...baseConfig, skipExisting: true }
@@ -697,7 +697,7 @@ describe('deployToCloudify', () => {
         storage: [{ name: 'minio', type: 'minio', environment: [], volumes: [] }],
       };
 
-      const result = await deployToCloudify(
+      const result = await deployToCoolify(
         mockClient as unknown as CoolifyApiClient,
         app,
         { ...baseConfig, skipExisting: true }
@@ -729,7 +729,7 @@ describe('deployToCloudify', () => {
         ],
       };
 
-      const result = await deployToCloudify(
+      const result = await deployToCoolify(
         mockClient as unknown as CoolifyApiClient,
         app,
         { ...baseConfig, skipExisting: true }
@@ -750,7 +750,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'db', type: 'postgres', hasDataVolume: false, environment: [] }],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig, {
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig, {
         onProgress: (msg) => logs.push(msg),
       });
 
@@ -767,7 +767,7 @@ describe('deployToCloudify', () => {
         databases: [{ name: 'db', type: 'postgres', hasDataVolume: false, environment: [] }],
       };
 
-      await deployToCloudify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
+      await deployToCoolify(mockClient as unknown as CoolifyApiClient, app, baseConfig);
 
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();

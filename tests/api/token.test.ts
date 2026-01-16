@@ -311,8 +311,8 @@ describe('token.ts', () => {
       expect(apiIndex.CoolifyApiClient).toBeDefined();
     });
 
-    it('should export deployToCloudify from index', () => {
-      expect(apiIndex.deployToCloudify).toBeDefined();
+    it('should export deployToCoolify from index', () => {
+      expect(apiIndex.deployToCoolify).toBeDefined();
     });
   });
 });

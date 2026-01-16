@@ -14,7 +14,7 @@ export type { GenerateOptions, GenerateResult } from './generators/coolify/index
 
 // API exports
 export { CoolifyApiClient } from './api/coolify.js';
-export { deployToCloudify } from './api/deployer.js';
+export { deployToCoolify } from './api/deployer.js';
 export type {
   DeployConfig,
   DeployResult,

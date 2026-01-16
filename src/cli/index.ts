@@ -22,7 +22,7 @@ import {
   resolveToken,
   resolveApiUrl,
   validateCredentials,
-  deployToCloudify,
+  deployToCoolify,
 } from '../api/index.js';
 
 const program = new Command();
@@ -453,7 +453,7 @@ program
           }
         }
 
-        const deployResult = await deployToCloudify(client, parseResult.app, {
+        const deployResult = await deployToCoolify(client, parseResult.app, {
           projectUuid: projectUuid || 'dry-run-project',
           serverUuid: serverUuid || 'dry-run-server',
           environmentName: environmentName || 'production',

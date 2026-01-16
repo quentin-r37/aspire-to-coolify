@@ -74,7 +74,7 @@ Transforms `AspireApp` into Coolify API commands. Generates curl-based bash scri
 ### API Layer (`src/api/`)
 
 - **coolify.ts**: `CoolifyApiClient` class wrapping all Coolify REST API calls (create + list methods)
-- **deployer.ts**: `deployToCloudify()` orchestrates actual deployment, iterating through resources in dependency order. Supports `skipExisting` option to skip resources that already exist.
+- **deployer.ts**: `deployToCoolify()` orchestrates actual deployment, iterating through resources in dependency order. Supports `skipExisting` option to skip resources that already exist.
 - **token.ts**: Credential resolution (CLI flags → env vars → config file → interactive prompt)
 
 ### CLI (`src/cli/index.ts`)

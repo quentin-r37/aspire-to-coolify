@@ -422,7 +422,7 @@ npm install aspire2coolify
 ### Basic Usage
 
 ```typescript
-import { parseFile, generate, deployToCloudify, CoolifyApiClient } from 'aspire2coolify';
+import { parseFile, generate, deployToCoolify, CoolifyApiClient } from 'aspire2coolify';
 
 // Parse an Aspire Program.cs file
 const { app, errors, warnings } = parseFile('./AppHost/Program.cs');
@@ -437,7 +437,7 @@ console.log(script);
 
 // Or deploy directly via API
 const client = new CoolifyApiClient('https://coolify.example.com', 'your-token');
-const summary = await deployToCloudify(client, app, {
+const summary = await deployToCoolify(client, app, {
   projectUuid: 'project-uuid',
   serverUuid: 'server-uuid',
   environmentName: 'production',
@@ -453,7 +453,7 @@ console.log(`Deployed: ${summary.successful} succeeded, ${summary.failed} failed
 import { parseFile, parseSource } from 'aspire2coolify/parser';
 
 // API client only
-import { CoolifyApiClient, deployToCloudify } from 'aspire2coolify/api';
+import { CoolifyApiClient, deployToCoolify } from 'aspire2coolify/api';
 
 // Generator only
 import { generate } from 'aspire2coolify/generator';
@@ -467,7 +467,7 @@ import { generate } from 'aspire2coolify/generator';
 | `parseSource(code)` | Parse C# source code string |
 | `generate(app, options)` | Generate Coolify deployment script |
 | `CoolifyApiClient` | Coolify REST API client class |
-| `deployToCloudify(client, app, config)` | Deploy resources to Coolify |
+| `deployToCoolify(client, app, config)` | Deploy resources to Coolify |
 | `resolveToken()` | Resolve API token from env/config |
 | `resolveApiUrl()` | Resolve API URL from env/config |
 | `createEmptyAspireApp()` | Create an empty AspireApp model |

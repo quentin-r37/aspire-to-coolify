@@ -198,7 +198,7 @@ builder.Build().Run();</code></pre>
       <p class="section-subtitle">Use aspire2coolify as a library in your Node.js projects</p>
 
       <div class="api-example">
-        <pre><code class="language-typescript">import { parseFile, generate, deployToCloudify, CoolifyApiClient } from 'aspire2coolify';
+        <pre><code class="language-typescript">import { parseFile, generate, deployToCoolify, CoolifyApiClient } from 'aspire2coolify';
 
 // Parse an Aspire Program.cs file
 const { app } = parseFile('./AppHost/Program.cs');
@@ -211,7 +211,7 @@ const { script } = generate(app, {
 
 // Or deploy directly via API
 const client = new CoolifyApiClient('https://coolify.example.com', 'token');
-const summary = await deployToCloudify(client, app, {
+const summary = await deployToCoolify(client, app, {
   projectUuid: 'project-uuid',
   serverUuid: 'server-uuid',
   environmentName: 'production',

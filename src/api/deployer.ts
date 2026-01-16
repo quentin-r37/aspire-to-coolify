@@ -107,7 +107,7 @@ async function fetchExistingResources(
 /**
  * Deploy an Aspire application model to Coolify
  */
-export async function deployToCloudify(
+export async function deployToCoolify(
   client: CoolifyApiClient,
   app: AspireApp,
   config: DeployConfig,
