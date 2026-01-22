@@ -42,6 +42,7 @@
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --write src tests",
