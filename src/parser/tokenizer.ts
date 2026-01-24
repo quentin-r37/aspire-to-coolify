@@ -29,17 +29,59 @@ export function extractFluentChains(source: string): FluentChain[] {
   // Normalize source: remove comments and collapse whitespace
   const normalized = normalizeSource(source);
 
-  // Match fluent chains starting with Add* methods
-  // Handles: var x = builder.AddXxx("name")...;
-  //          builder.AddXxx("name")...;
-  //          builder.AddProject<T>("name")...;
-  //          x.AddDatabase("name")...;
-  const chainRegex =
-    /(?:(?:var|const)\s+(\w+)\s*=\s*)?(\w+)\.(Add\w+)(?:<[^>]+>)?\s*\(([^)]*)\)((?:\s*\.\s*\w+\s*\([^)]*(?:\([^)]*\)[^)]*)*\))*)\s*;/g;
+  // Find all Add* method calls and extract chains using balanced parentheses matching
+  // Allow optional whitespace between base object and method call
+  const addMethodRegex =
+    /(?:(?:var|const)\s+(\w+)\s*=\s*)?(\w+)\s*\.\s*(Add\w+)(?:<[^>]+>)?\s*\(/g;
 
   let match;
-  while ((match = chainRegex.exec(normalized)) !== null) {
-    const [raw, varName, baseObj, rootMethod, rootArgsRaw, chainPart] = match;
+  while ((match = addMethodRegex.exec(normalized)) !== null) {
+    const [prefix, varName, baseObj, rootMethod] = match;
+    const startIdx = match.index;
+    const argsStartIdx = match.index + prefix.length;
+
+    // Find the matching closing paren for the root method args
+    const rootArgsEnd = findMatchingParen(normalized, argsStartIdx - 1);
+    if (rootArgsEnd === -1) continue;
+
+    const rootArgsRaw = normalized.substring(argsStartIdx, rootArgsEnd);
+
+    // Now find chained methods until we hit a semicolon
+    let chainEndIdx = rootArgsEnd + 1;
+    const chainedMethods: MethodCall[] = [];
+
+    while (chainEndIdx < normalized.length) {
+      // Skip whitespace
+      while (chainEndIdx < normalized.length && /\s/.test(normalized[chainEndIdx])) {
+        chainEndIdx++;
+      }
+
+      // Check for end of chain
+      if (normalized[chainEndIdx] === ';') {
+        chainEndIdx++;
+        break;
+      }
+
+      // Check for chained method: .MethodName(
+      const chainMatch = normalized.substring(chainEndIdx).match(/^\.(\w+)\s*\(/);
+      if (!chainMatch) break;
+
+      const methodName = chainMatch[1];
+      const methodArgsStart = chainEndIdx + chainMatch[0].length;
+      const methodArgsEnd = findMatchingParen(normalized, methodArgsStart - 1);
+      if (methodArgsEnd === -1) break;
+
+      const rawArgs = normalized.substring(methodArgsStart, methodArgsEnd);
+      chainedMethods.push({
+        method: methodName,
+        args: parseArgs(rawArgs),
+        rawArgs,
+      });
+
+      chainEndIdx = methodArgsEnd + 1;
+    }
+
+    const raw = normalized.substring(startIdx, chainEndIdx);
 
     const chain: FluentChain = {
       variableName: varName || undefined,
@@ -47,31 +89,49 @@ export function extractFluentChains(source: string): FluentChain[] {
       rootMethod,
       rootArgs: parseArgs(rootArgsRaw),
       name: extractFirstStringArg(rootArgsRaw) || '',
-      chainedMethods: [],
+      chainedMethods,
       raw,
     };
-
-    // Parse chained method calls
-    if (chainPart) {
-      chain.chainedMethods = parseMethodChain(chainPart);
-    }
 
     chains.push(chain);
   }
 
-  // Also match lambda/callback patterns like .RunAsContainer(a => a.WithImage(...))
-  const lambdaChains = extractLambdaChains(normalized);
-  for (const lambda of lambdaChains) {
-    // Find parent chain and merge
-    const parent = chains.find(
-      (c) => c.raw.includes(lambda.parentMethod) && c.raw.includes(lambda.raw)
-    );
-    if (parent) {
-      parent.chainedMethods.push(...lambda.methods);
+  return chains;
+}
+
+/**
+ * Find the matching closing parenthesis for an opening paren at the given index
+ * Returns the index of the closing paren, or -1 if not found
+ */
+function findMatchingParen(source: string, openIndex: number): number {
+  let depth = 0;
+  let inString = false;
+  let stringChar = '';
+
+  for (let i = openIndex; i < source.length; i++) {
+    const char = source[i];
+    const prevChar = i > 0 ? source[i - 1] : '';
+
+    // Handle string boundaries
+    if ((char === '"' || char === "'") && prevChar !== '\\') {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+    }
+
+    if (!inString) {
+      if (char === '(') depth++;
+      if (char === ')') {
+        depth--;
+        if (depth === 0) return i;
+      }
     }
   }
 
-  return chains;
+  return -1;
 }
 
 /**
@@ -169,29 +229,6 @@ export function extractNamedArgs(args: string[]): Record<string, string> {
   return result;
 }
 
-/**
- * Extract lambda/callback chains
- */
-function extractLambdaChains(
-  source: string
-): Array<{ parentMethod: string; raw: string; methods: MethodCall[] }> {
-  const results: Array<{ parentMethod: string; raw: string; methods: MethodCall[] }> = [];
-
-  // Match patterns like .RunAsContainer(a => a.WithImage("x").WithTag("y"))
-  const lambdaRegex = /\.(\w+)\s*\(\s*\w+\s*=>\s*\w+((?:\s*\.\s*\w+\s*\([^)]*\))+)\s*\)/g;
-
-  let match;
-  while ((match = lambdaRegex.exec(source)) !== null) {
-    const [raw, parentMethod, chainPart] = match;
-    results.push({
-      parentMethod,
-      raw,
-      methods: parseMethodChain(chainPart),
-    });
-  }
-
-  return results;
-}
 
 /**
  * Normalize C# source code for easier parsing

@@ -88,14 +88,20 @@ export function extractChildDatabases(chains: FluentChain[]): Database[] {
       // Find the parent server by baseObject variable name
       const parentChain = chains.find((c) => c.variableName === chain.baseObject);
 
+      // Extract parent server's image configuration if available
+      const parentDb = parentChain ? extractDatabase(parentChain) : null;
+
       databases.push({
         name: chain.name,
         type: parentChain ? DATABASE_METHODS[parentChain.rootMethod] || 'postgres' : 'postgres',
         variableName: chain.variableName,
         serverName: parentChain?.name,
         serverVariableName: chain.baseObject,
-        hasDataVolume: false,
-        environment: [],
+        image: parentDb?.image,
+        imageTag: parentDb?.imageTag,
+        hostPort: parentDb?.hostPort,
+        hasDataVolume: parentDb?.hasDataVolume ?? false,
+        environment: parentDb?.environment ?? [],
       });
     }
   }
@@ -115,22 +121,65 @@ function extractEnvironment(args: string[]): EnvironmentVariable | null {
 function extractNestedMethods(argsStr: string): Array<{ method: string; args: string[] }> {
   const methods: Array<{ method: string; args: string[] }> = [];
 
-  // Match lambda patterns: a => a.Method(args).Method2(args)
-  const lambdaMatch = argsStr.match(/\w+\s*=>\s*\w+((?:\s*\.\s*\w+\s*\([^)]*\))+)/);
-  if (lambdaMatch) {
-    const chainPart = lambdaMatch[1];
-    const methodRegex = /\.(\w+)\s*\(([^)]*)\)/g;
+  // Match lambda pattern: a => a.Method(...)...
+  const lambdaMatch = argsStr.match(/\w+\s*=>\s*\w+\s*/);
+  if (!lambdaMatch) return methods;
 
-    let match;
-    while ((match = methodRegex.exec(chainPart)) !== null) {
-      methods.push({
-        method: match[1],
-        args: match[2].split(',').map((a) => a.trim()),
-      });
-    }
+  // Start parsing after the lambda parameter
+  let pos = lambdaMatch.index! + lambdaMatch[0].length;
+
+  while (pos < argsStr.length) {
+    // Look for .MethodName(
+    const methodMatch = argsStr.substring(pos).match(/^\s*\.\s*(\w+)\s*\(/);
+    if (!methodMatch) break;
+
+    const methodName = methodMatch[1];
+    const argsStart = pos + methodMatch[0].length;
+
+    // Find matching closing paren using balanced matching
+    const argsEnd = findMatchingParen(argsStr, argsStart - 1);
+    if (argsEnd === -1) break;
+
+    const rawArgs = argsStr.substring(argsStart, argsEnd);
+    methods.push({
+      method: methodName,
+      args: rawArgs.split(',').map((a) => a.trim()).filter((a) => a),
+    });
+
+    pos = argsEnd + 1;
   }
 
   return methods;
+}
+
+function findMatchingParen(source: string, openIndex: number): number {
+  let depth = 0;
+  let inString = false;
+  let stringChar = '';
+
+  for (let i = openIndex; i < source.length; i++) {
+    const char = source[i];
+    const prevChar = i > 0 ? source[i - 1] : '';
+
+    if ((char === '"' || char === "'") && prevChar !== '\\') {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+      }
+    }
+
+    if (!inString) {
+      if (char === '(') depth++;
+      if (char === ')') {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+  }
+
+  return -1;
 }
 
 function processNestedMethod(database: Database, nested: { method: string; args: string[] }): void {

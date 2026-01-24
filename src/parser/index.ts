@@ -109,14 +109,23 @@ export function parseSource(source: string, _options: ParseOptions = {}): ParseR
 
     // Extract child databases (e.g., postgres.AddDatabase("db"))
     const childDbs = extractChildDatabases(chains);
+
+    // Collect server variable names that have child databases
+    const serversWithChildren = new Set<string>();
     for (const db of childDbs) {
-      // Merge with parent database info if available
-      const parentDb = app.databases.find((d) => d.variableName === db.serverVariableName);
-      if (parentDb) {
-        db.image = db.image || parentDb.image;
-        db.imageTag = db.imageTag || parentDb.imageTag;
-        db.type = parentDb.type;
+      if (db.serverVariableName) {
+        serversWithChildren.add(db.serverVariableName);
       }
+    }
+
+    // Remove server databases that have child databases (avoid duplicates)
+    // Keep only the child database, which inherits the server's configuration
+    app.databases = app.databases.filter(
+      (db) => !db.variableName || !serversWithChildren.has(db.variableName)
+    );
+
+    for (const db of childDbs) {
+      // Merge with parent database info if available (already done in extractChildDatabases)
       app.databases.push(db);
     }
 
