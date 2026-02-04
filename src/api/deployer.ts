@@ -61,10 +61,47 @@ interface ExistingResources {
 }
 
 /**
- * Fetch existing resources from Coolify API
+ * Check if a resource belongs to the target project and environment
+ * Returns true only if we can confirm the resource belongs to the target,
+ * or if no filtering info is available (fallback for older API versions)
+ */
+function matchesProjectAndEnvironment(
+  resource: { project_uuid?: string; environment?: { name: string } },
+  projectUuid: string,
+  environmentName: string
+): boolean {
+  // If project_uuid is available, it must match
+  if (resource.project_uuid) {
+    if (resource.project_uuid !== projectUuid) {
+      return false;
+    }
+  }
+
+  // If environment info is available, it must match
+  if (resource.environment) {
+    if (resource.environment.name !== environmentName) {
+      return false;
+    }
+    // Environment matches - this is a confirmed match
+    return true;
+  }
+
+  // If we have project_uuid match but no environment info, check project at least
+  if (resource.project_uuid === projectUuid) {
+    return true;
+  }
+
+  // No project/environment info available - cannot confirm match
+  // Be conservative: don't consider it as existing in target environment
+  return false;
+}
+
+/**
+ * Fetch existing resources from Coolify API filtered by project and environment
  */
 async function fetchExistingResources(
   client: CoolifyApiClient,
+  config: DeployConfig,
   log: (message: string) => void
 ): Promise<ExistingResources> {
   const existing: ExistingResources = {
@@ -75,31 +112,37 @@ async function fetchExistingResources(
 
   log('Fetching existing resources...');
 
-  // Fetch databases
+  // Fetch databases and filter by project/environment
   const dbResponse = await client.listDatabases();
   if (dbResponse.success && dbResponse.data) {
     for (const db of dbResponse.data) {
-      existing.databases.set(db.name, db.uuid);
+      if (matchesProjectAndEnvironment(db, config.projectUuid, config.environmentName)) {
+        existing.databases.set(db.name, db.uuid);
+      }
     }
   }
 
-  // Fetch applications
+  // Fetch applications and filter by project/environment
   const appResponse = await client.listApplications();
   if (appResponse.success && appResponse.data) {
     for (const app of appResponse.data) {
-      existing.applications.set(app.name, app.uuid);
+      if (matchesProjectAndEnvironment(app, config.projectUuid, config.environmentName)) {
+        existing.applications.set(app.name, app.uuid);
+      }
     }
   }
 
-  // Fetch services
+  // Fetch services and filter by project/environment
   const svcResponse = await client.listServices();
   if (svcResponse.success && svcResponse.data) {
     for (const svc of svcResponse.data) {
-      existing.services.set(svc.name, svc.uuid);
+      if (matchesProjectAndEnvironment(svc, config.projectUuid, config.environmentName)) {
+        existing.services.set(svc.name, svc.uuid);
+      }
     }
   }
 
-  log(`  Found ${existing.databases.size} databases, ${existing.applications.size} applications, ${existing.services.size} services`);
+  log(`  Found ${existing.databases.size} databases, ${existing.applications.size} applications, ${existing.services.size} services in ${config.environmentName}`);
 
   return existing;
 }
@@ -122,7 +165,7 @@ export async function deployToCoolify(
   // Always fetch existing resources to detect duplicates (unless dry-run)
   let existing: ExistingResources | null = null;
   if (!options.dryRun) {
-    existing = await fetchExistingResources(client, log);
+    existing = await fetchExistingResources(client, config, log);
   }
 
   // Deploy databases first

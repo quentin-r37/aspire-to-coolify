@@ -56,16 +56,37 @@ export interface CoolifyDatabase {
   uuid: string;
   name: string;
   type?: string;
+  project_uuid?: string;
+  environment_id?: number;
+  environment?: {
+    id: number;
+    name: string;
+    project_id: number;
+  };
 }
 
 export interface CoolifyApplication {
   uuid: string;
   name: string;
+  project_uuid?: string;
+  environment_id?: number;
+  environment?: {
+    id: number;
+    name: string;
+    project_id: number;
+  };
 }
 
 export interface CoolifyService {
   uuid: string;
   name: string;
+  project_uuid?: string;
+  environment_id?: number;
+  environment?: {
+    id: number;
+    name: string;
+    project_id: number;
+  };
 }
 
 // Database payload types

@@ -601,10 +601,17 @@ describe('deployToCoolify', () => {
   });
 
   describe('skip existing resources', () => {
+    // Helper to create mock resource with project/environment info matching baseConfig
+    const withEnvInfo = (obj: { name: string; uuid: string }) => ({
+      ...obj,
+      project_uuid: 'project-123',
+      environment: { id: 1, name: 'production', project_id: 1 },
+    });
+
     it('should skip existing database when skipExisting is true', async () => {
       mockClient.listDatabases.mockResolvedValueOnce({
         success: true,
-        data: [{ name: 'mydb', uuid: 'existing-db-uuid' }],
+        data: [withEnvInfo({ name: 'mydb', uuid: 'existing-db-uuid' })],
       });
 
       const app: AspireApp = {
@@ -627,7 +634,7 @@ describe('deployToCoolify', () => {
     it('should fail on existing database when skipExisting is false', async () => {
       mockClient.listDatabases.mockResolvedValueOnce({
         success: true,
-        data: [{ name: 'mydb', uuid: 'existing-db-uuid' }],
+        data: [withEnvInfo({ name: 'mydb', uuid: 'existing-db-uuid' })],
       });
 
       const app: AspireApp = {
@@ -645,7 +652,7 @@ describe('deployToCoolify', () => {
     it('should skip existing service when skipExisting is true', async () => {
       mockClient.listServices.mockResolvedValueOnce({
         success: true,
-        data: [{ name: 'rabbitmq', uuid: 'existing-svc-uuid' }],
+        data: [withEnvInfo({ name: 'rabbitmq', uuid: 'existing-svc-uuid' })],
       });
 
       const app: AspireApp = {
@@ -666,7 +673,7 @@ describe('deployToCoolify', () => {
     it('should skip existing application when skipExisting is true', async () => {
       mockClient.listApplications.mockResolvedValueOnce({
         success: true,
-        data: [{ name: 'webapp', uuid: 'existing-app-uuid' }],
+        data: [withEnvInfo({ name: 'webapp', uuid: 'existing-app-uuid' })],
       });
 
       const app: AspireApp = {
@@ -689,7 +696,7 @@ describe('deployToCoolify', () => {
     it('should skip existing storage service when skipExisting is true', async () => {
       mockClient.listServices.mockResolvedValueOnce({
         success: true,
-        data: [{ name: 'minio', uuid: 'existing-storage-uuid' }],
+        data: [withEnvInfo({ name: 'minio', uuid: 'existing-storage-uuid' })],
       });
 
       const app: AspireApp = {
@@ -706,13 +713,76 @@ describe('deployToCoolify', () => {
       expect(mockClient.createService).not.toHaveBeenCalled();
       expect(result.skipped).toBe(1);
     });
+
+    it('should NOT skip resource in different environment', async () => {
+      // Resource exists but in staging, not production
+      mockClient.listDatabases.mockResolvedValueOnce({
+        success: true,
+        data: [{
+          name: 'mydb',
+          uuid: 'existing-db-uuid',
+          project_uuid: 'project-123',
+          environment: { id: 2, name: 'staging', project_id: 1 },
+        }],
+      });
+
+      const app: AspireApp = {
+        ...createEmptyAspireApp(),
+        databases: [{ name: 'mydb', type: 'postgres', hasDataVolume: false, environment: [] }],
+      };
+
+      const result = await deployToCoolify(
+        mockClient as unknown as CoolifyApiClient,
+        app,
+        { ...baseConfig, skipExisting: true }
+      );
+
+      // Should NOT skip - resource is in different environment
+      expect(mockClient.createPostgresDatabase).toHaveBeenCalled();
+      expect(result.skipped).toBe(0);
+      expect(result.successful).toBe(1);
+    });
+
+    it('should NOT skip resource in different project', async () => {
+      // Resource exists but in different project
+      mockClient.listDatabases.mockResolvedValueOnce({
+        success: true,
+        data: [{
+          name: 'mydb',
+          uuid: 'existing-db-uuid',
+          project_uuid: 'other-project',
+          environment: { id: 1, name: 'production', project_id: 2 },
+        }],
+      });
+
+      const app: AspireApp = {
+        ...createEmptyAspireApp(),
+        databases: [{ name: 'mydb', type: 'postgres', hasDataVolume: false, environment: [] }],
+      };
+
+      const result = await deployToCoolify(
+        mockClient as unknown as CoolifyApiClient,
+        app,
+        { ...baseConfig, skipExisting: true }
+      );
+
+      // Should NOT skip - resource is in different project
+      expect(mockClient.createPostgresDatabase).toHaveBeenCalled();
+      expect(result.skipped).toBe(0);
+      expect(result.successful).toBe(1);
+    });
   });
 
   describe('deployment summary', () => {
     it('should return correct counts for mixed results', async () => {
       mockClient.listDatabases.mockResolvedValueOnce({
         success: true,
-        data: [{ name: 'existing-db', uuid: 'existing-uuid' }],
+        data: [{
+          name: 'existing-db',
+          uuid: 'existing-uuid',
+          project_uuid: 'project-123',
+          environment: { id: 1, name: 'production', project_id: 1 },
+        }],
       });
 
       mockClient.createMysqlDatabase.mockResolvedValueOnce({
